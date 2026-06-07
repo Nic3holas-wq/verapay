@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Size;
 public record RegisterRequestDto(
         @NotBlank(message = "Name is required")
         @Size(min = 5, max = 30, message = "The length of the name should be between 5 and 100 characters")
-        String name,
+        String fullName,
 
         @NotBlank(message = "Email is required")
         @Email(message = "Email address must be a valid value")

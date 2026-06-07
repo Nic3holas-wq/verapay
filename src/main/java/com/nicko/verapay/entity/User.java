@@ -19,7 +19,7 @@ import java.time.Instant;
         @Index(name = "users_phone_number_key",
                 columnList = "phone_number",
                 unique = true)})
-public class User {
+public class User extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
@@ -54,14 +54,5 @@ public class User {
     @ColumnDefault("true")
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
-
-    @NotNull
-    @ColumnDefault("now()")
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at")
-    private Instant updatedAt;
-
 
 }

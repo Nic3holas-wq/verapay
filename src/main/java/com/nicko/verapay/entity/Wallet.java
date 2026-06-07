@@ -16,7 +16,7 @@ import java.time.Instant;
 @Table(name = "wallets", indexes = {@Index(name = "wallets_owner_id_key",
         columnList = "owner_id",
         unique = true)})
-public class Wallet {
+public class Wallet extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
@@ -48,14 +48,5 @@ public class Wallet {
     @ColumnDefault("0")
     @Column(name = "version", nullable = false)
     private Long version;
-
-    @NotNull
-    @ColumnDefault("now()")
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at")
-    private Instant updatedAt;
-
-
+    
 }

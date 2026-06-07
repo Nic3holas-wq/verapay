@@ -9,7 +9,9 @@ import com.nicko.verapay.repository.RoleRepository;
 import com.nicko.verapay.repository.UserRepository;
 import com.nicko.verapay.repository.WalletRepository;
 import com.nicko.verapay.security.util.JwtUtil;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,8 +24,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-
+@Slf4j
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -64,7 +65,7 @@ public class AuthController {
     // V1 User Registration
     @PostMapping(value = "/register/public", version = "1.0")
     @Transactional
-    public ResponseEntity<String> registerUser(@RequestBody RegisterRequestDto registerRequestDto) {
+    public ResponseEntity<String> registerUser(@RequestBody @Valid RegisterRequestDto registerRequestDto) {
         User user = new User();
         BeanUtils.copyProperties(registerRequestDto, user);
         user.setPassword(passwordEncoder.encode(registerRequestDto.password()));
@@ -79,9 +80,10 @@ public class AuthController {
         wallet.setOwner(savedUser);
         wallet.setBalance(java.math.BigDecimal.ZERO);
         wallet.setCurrency("KES");
+        wallet.setIsActive(true);
         walletRepository.save(wallet);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body("Registration successful");
+        return ResponseEntity.status(HttpStatus.CREATED).body("User Registration successful");
     }
 
     private ResponseEntity<LoginResponseDto> buildErrorResponse(HttpStatus status,
