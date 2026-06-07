@@ -45,11 +45,10 @@ public class User {
     @Column(name = "password", nullable = false)
     private String password;
 
-    @Size(max = 20)
     @NotNull
-    @ColumnDefault("'USER'")
-    @Column(name = "role", nullable = false, length = 20)
-    private String role;
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "role_id", nullable = false)
+    private Role role;
 
     @NotNull
     @ColumnDefault("true")
