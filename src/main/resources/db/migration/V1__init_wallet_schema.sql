@@ -1,14 +1,16 @@
 CREATE TABLE IF NOT EXISTS users(
-                                    id BIGSERIAL PRIMARY KEY,
-                                    full_name VARCHAR(100) NOT NULL,
+    id BIGSERIAL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
     phone_number VARCHAR(15) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
+    transaction_pin VARCHAR(255) NOT NULL DEFAULT 'UNSET',
     role_id BIGINT NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP
     );
+ALTER TABLE users ADD COLUMN transaction_pin VARCHAR(255) NOT NULL DEFAULT 'UNSET';
 
 ALTER TABLE users
     ADD CONSTRAINT fk_users_role

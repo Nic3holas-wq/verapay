@@ -133,10 +133,13 @@ public class AuthController {
     // V1 User Registration
     @PostMapping(value = "/register/public", version = "1.0")
     @Transactional
-    public ResponseEntity<String> registerUser(@RequestBody @Valid RegisterRequestDto registerRequestDto) {
+    public ResponseEntity<?> registerUser(@RequestBody @Valid RegisterRequestDto registerRequestDto) {
+
         User user = new User();
-        BeanUtils.copyProperties(registerRequestDto, user);
+        BeanUtils.copyProperties(registerRequestDto, user, "password", "transactionPin");
         user.setPassword(passwordEncoder.encode(registerRequestDto.password()));
+        user.setTransactionPin(passwordEncoder.encode(registerRequestDto.transactionPin())); // ← hash PIN
+
         Role role = roleRepository.findRoleByName(ApplicationConstants.ROLE_CUSTOMER)
                 .orElseThrow(() -> new IllegalArgumentException("Role not found: " +
                         ApplicationConstants.ROLE_CUSTOMER));
@@ -153,6 +156,7 @@ public class AuthController {
 
         return ResponseEntity.status(HttpStatus.CREATED).body("User Registration successful");
     }
+
 
     private ResponseEntity<LoginResponseDto> buildErrorResponse(HttpStatus status,
                                                                 String message) {

@@ -20,6 +20,10 @@ public record RegisterRequestDto(
 
         @NotBlank(message = "Password is required")
         @Size(min = 8, max = 20, message = "Password length must be between 8 and 50 characters")
-        String password
+        String password,
+
+        @NotBlank(message = "Transaction PIN is required")
+        @Pattern(regexp = "^\\d{4}$", message = "Transaction PIN must be exactly 4 digits")
+        String transactionPin
 ) {
 }
