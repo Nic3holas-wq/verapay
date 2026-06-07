@@ -2,13 +2,17 @@ package com.nicko.verapay.auth;
 
 import com.nicko.verapay.constants.ApplicationConstants;
 import com.nicko.verapay.dto.*;
+import com.nicko.verapay.entity.RefreshToken;
 import com.nicko.verapay.entity.Role;
 import com.nicko.verapay.entity.User;
 import com.nicko.verapay.entity.Wallet;
+import com.nicko.verapay.repository.RefreshTokenRepository;
 import com.nicko.verapay.repository.RoleRepository;
 import com.nicko.verapay.repository.UserRepository;
 import com.nicko.verapay.repository.WalletRepository;
 import com.nicko.verapay.security.util.JwtUtil;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +28,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @Slf4j
 @RestController
 @RequestMapping("/auth")
@@ -36,30 +42,92 @@ public class AuthController {
     private final UserRepository userRepository;
     private final WalletRepository walletRepository;
     private final RoleRepository roleRepository;
+    private final RefreshTokenService refreshTokenService;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     // V1: Standard Login
+// Update login to return both tokens
     @PostMapping(value = "/login/public", version = "1.0")
-    public ResponseEntity<LoginResponseDto> apiLogin(@RequestBody LoginRequestDto request) {
+    public ResponseEntity<LoginResponseDto> apiLogin(
+            @RequestBody LoginRequestDto request,
+            HttpServletResponse response) {
         try {
             Authentication auth = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.username(), request.password())
-            );
+                    new UsernamePasswordAuthenticationToken(
+                            request.username(), request.password()));
 
-            String token = jwtUtil.generateJwtToken(auth);
             User user = (User) auth.getPrincipal();
+            String accessToken = jwtUtil.generateAccessToken(auth);
 
-            UserDto userDto = new UserDto(user.getId(), user.getFullName(), user.getEmail(), user.getPhoneNumber(), null);
-            return ResponseEntity.ok(new LoginResponseDto("Login Successful", userDto, token));
-        }catch (BadCredentialsException ex) {
-            return buildErrorResponse(HttpStatus.UNAUTHORIZED,
-                    "Invalid username or password");
+            // Generate refresh token
+            RefreshToken refreshToken = jwtUtil.generateRefreshToken(user, null);
+
+            // Send refresh token as HttpOnly cookie
+            Cookie refreshCookie = new Cookie("refreshToken", refreshToken.getToken());
+            refreshCookie.setHttpOnly(true);   // ← JS cannot read it
+            refreshCookie.setSecure(true);     // ← HTTPS only
+            refreshCookie.setPath("/api/auth/refresh");
+            refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7 days
+            response.addCookie(refreshCookie);
+
+            UserDto userDto = new UserDto(user.getId(), user.getFullName(),
+                    user.getEmail(), user.getPhoneNumber(), user.getRole().getName());
+
+            return ResponseEntity.ok(new LoginResponseDto("Login Successful", userDto, accessToken));
+
+        } catch (BadCredentialsException ex) {
+            return buildErrorResponse(HttpStatus.UNAUTHORIZED, "Invalid username or password");
         } catch (AuthenticationException ex) {
-            return buildErrorResponse(HttpStatus.UNAUTHORIZED,
-                    "Authentication failed");
+            return buildErrorResponse(HttpStatus.UNAUTHORIZED, "Authentication failed");
         } catch (Exception ex) {
-            return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "An unexpected error occurred");
+            return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
         }
+    }
+
+    // New refresh endpoint
+    @PostMapping(value = "/refresh/public", version = "1.0")
+    public ResponseEntity<?> refresh(
+            @CookieValue(value = "refreshToken", required = false) String refreshToken,
+            HttpServletResponse response) {
+
+        if (refreshToken == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Refresh token missing");
+        }
+
+        RefreshTokenService.TokenPair tokenPair = refreshTokenService.refresh(refreshToken);
+
+        // Rotate cookie with new refresh token
+        Cookie newCookie = new Cookie("refreshToken", tokenPair.refreshToken());
+        newCookie.setHttpOnly(true);
+        newCookie.setSecure(true);
+        newCookie.setPath("/api/auth/refresh");
+        newCookie.setMaxAge(7 * 24 * 60 * 60);
+        response.addCookie(newCookie);
+
+        return ResponseEntity.ok(Map.of("accessToken", tokenPair.accessToken()));
+    }
+
+    // Logout — revoke all tokens
+    @PostMapping(value = "/logout", version = "1.0")
+    public ResponseEntity<?> logout(
+            @CookieValue(value = "refreshToken", required = false) String refreshToken,
+            HttpServletResponse response) {
+
+        if (refreshToken != null) {
+            refreshTokenRepository.findByToken(refreshToken)
+                    .ifPresent(token -> {
+                        refreshTokenRepository.revokeAllUserTokens(token.getUser());
+                    });
+        }
+
+        // Clear the cookie
+        Cookie cookie = new Cookie("refreshToken", "");
+        cookie.setMaxAge(0);
+        cookie.setPath("/api/auth/refresh");
+        response.addCookie(cookie);
+
+        return ResponseEntity.ok("Logged out successfully");
     }
 
     // V1 User Registration
