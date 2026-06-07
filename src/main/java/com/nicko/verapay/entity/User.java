@@ -55,4 +55,9 @@ public class User extends BaseEntity {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
+    @Size(max = 255)
+    @NotNull
+    @Column(name = "transaction_pin", nullable = false)
+    private String transactionPin;
+
 }

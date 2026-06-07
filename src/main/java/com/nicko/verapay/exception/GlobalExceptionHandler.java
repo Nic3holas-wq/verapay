@@ -85,4 +85,17 @@ public class GlobalExceptionHandler {
                 .body(ex.getErrors());
     }
 
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ErrorResponseDto> handleUnauthorizedException(
+            UnauthorizedException ex, WebRequest request) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorResponseDto(
+                        request.getDescription(false),
+                        HttpStatus.UNAUTHORIZED,
+                        ex.getMessage(),
+                        LocalDateTime.now(),
+                        null
+                ));
+    }
+
 }

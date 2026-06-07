@@ -1,14 +1,16 @@
 CREATE TABLE IF NOT EXISTS users(
-                                    id BIGSERIAL PRIMARY KEY,
-                                    full_name VARCHAR(100) NOT NULL,
+    id BIGSERIAL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
     phone_number VARCHAR(15) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
+    transaction_pin VARCHAR(255) NOT NULL DEFAULT 'UNSET',
     role_id BIGINT NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP
     );
+ALTER TABLE users ADD COLUMN transaction_pin VARCHAR(255) NOT NULL DEFAULT 'UNSET';
 
 ALTER TABLE users
     ADD CONSTRAINT fk_users_role
@@ -66,7 +68,35 @@ VALUES ('ROLE_CUSTOMER', CURRENT_TIMESTAMP, 'DBA');
 INSERT INTO roles (name, created_at, created_by)
 VALUES ('ROLE_ADMIN', CURRENT_TIMESTAMP, 'DBA');
 
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id              BIGSERIAL PRIMARY KEY,
+    token           VARCHAR(255) NOT NULL UNIQUE,
+    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at      TIMESTAMP NOT NULL,
+    is_revoked      BOOLEAN NOT NULL DEFAULT FALSE,
+    previous_token  VARCHAR(255),
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+);
 
+-- Index for fast token lookup
+CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
+
+-- Index for fast user token lookup (used during revocation)
+CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+
+-- Index for reuse detection
+CREATE INDEX idx_refresh_tokens_previous_token ON refresh_tokens(previous_token);
+
+CREATE TABLE IF NOT EXISTS step_up_tokens (
+                                              id          BIGSERIAL PRIMARY KEY,
+                                              token       VARCHAR(255) NOT NULL UNIQUE,
+                                              user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                              expires_at  TIMESTAMP NOT NULL,
+                                              is_used     BOOLEAN NOT NULL DEFAULT FALSE,
+                                              created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_step_up_tokens_token ON step_up_tokens(token);
+CREATE INDEX idx_step_up_tokens_user_id ON step_up_tokens(user_id);
 -- Users
 CREATE UNIQUE INDEX idx_users_email       ON users(email);
 CREATE UNIQUE INDEX idx_users_phone       ON users(phone_number);
