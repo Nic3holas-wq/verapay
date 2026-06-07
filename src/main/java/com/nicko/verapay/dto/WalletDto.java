@@ -1,0 +1,18 @@
+package com.nicko.verapay.dto;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+
+public record WalletDto(
+        Long id,
+
+        // We include the currency so the user knows if they are looking at KES or another asset
+        String currency,
+
+        // BigDecimal is safer for money than Double or Float
+        BigDecimal balance,
+
+        boolean isActive,
+
+        Instant createdAt
+) {}
