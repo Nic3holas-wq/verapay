@@ -2,8 +2,10 @@ package com.nicko.verapay.security.util;
 
 import com.nicko.verapay.constants.ApplicationConstants;
 import com.nicko.verapay.entity.RefreshToken;
+import com.nicko.verapay.entity.StepUpToken;
 import com.nicko.verapay.entity.User;
 import com.nicko.verapay.repository.RefreshTokenRepository;
+import com.nicko.verapay.repository.StepUpTokenRepository;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ public class JwtUtil {
 
     private final Environment env;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final StepUpTokenRepository  stepUpTokenRepository;
 
     @Value("${jwt.issuer:Vera Pay}")
     private String jwtIssuer;
@@ -37,11 +40,15 @@ public class JwtUtil {
     @Value("${jwt.subject:JWT Token}")
     private String jwtSubject;
 
-    @Value("${jwt.expiration.minutes:15}")      // ← changed to 15 minutes
+    @Value("${jwt.expiration.minutes:15}")      // ←  15 minutes
     private int jwtExpirationMinutes;
 
     @Value("${jwt.refresh.expiration.days:7}")  // ← 7 days for refresh
     private int refreshExpirationDays;
+
+    // step up token duration
+    @Value("${jwt.stepup.expiration.minutes:5}")
+    private int stepUpExpirationMinutes;
 
     // ✅ Generate short-lived Access Token (15 mins)
     public String generateAccessToken(Authentication authentication) {
@@ -84,6 +91,19 @@ public class JwtUtil {
         refreshToken.setRevoked(false);
         refreshToken.setPreviousToken(previousToken); // for reuse detection
         return refreshTokenRepository.save(refreshToken);
+    }
+
+
+
+    // Generate Step-Up Token (5 mins, stored in DB)
+    public StepUpToken generateStepUpToken(User user) {
+        StepUpToken stepUpToken = new StepUpToken();
+        stepUpToken.setToken(UUID.randomUUID().toString());
+        stepUpToken.setUser(user);
+        stepUpToken.setExpiresAt(Instant.now().plusSeconds(
+                (long) stepUpExpirationMinutes * 60));
+        stepUpToken.setUsed(false);
+        return stepUpTokenRepository.save(stepUpToken);
     }
 
     // Keep old method name for backward compatibility

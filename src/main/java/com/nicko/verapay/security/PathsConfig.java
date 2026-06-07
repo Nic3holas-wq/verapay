@@ -30,6 +30,7 @@ public class PathsConfig {
     @Bean(name = "securedPaths")
     public List<String> securedPaths() {
         return List.of(
+                "/api/auth/step-up",
                 "/api/**"
         );
     }
