@@ -44,6 +44,7 @@ public class AuthController {
     private final RoleRepository roleRepository;
     private final RefreshTokenService refreshTokenService;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final StepUpService stepUpService;
 
     // V1: Standard Login
 // Update login to return both tokens
@@ -155,6 +156,18 @@ public class AuthController {
         walletRepository.save(wallet);
 
         return ResponseEntity.status(HttpStatus.CREATED).body("User Registration successful");
+    }
+
+    // Step-Up Authentication — verify PIN and get Step-Up Token
+    @PostMapping(value = "/step-up")
+    public ResponseEntity<?> stepUp(
+            @RequestBody @Valid StepUpRequestDto request) {
+        String stepUpToken = stepUpService.verifyPinAndIssueStepUpToken(request);
+        return ResponseEntity.ok(Map.of(
+                "stepUpToken", stepUpToken,
+                "expiresIn", "5 minutes",
+                "message", "Step-up authentication successful"
+        ));
     }
 
 

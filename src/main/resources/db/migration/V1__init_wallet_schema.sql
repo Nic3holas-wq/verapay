@@ -87,7 +87,16 @@ CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
 -- Index for reuse detection
 CREATE INDEX idx_refresh_tokens_previous_token ON refresh_tokens(previous_token);
 
-
+CREATE TABLE IF NOT EXISTS step_up_tokens (
+                                              id          BIGSERIAL PRIMARY KEY,
+                                              token       VARCHAR(255) NOT NULL UNIQUE,
+                                              user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                              expires_at  TIMESTAMP NOT NULL,
+                                              is_used     BOOLEAN NOT NULL DEFAULT FALSE,
+                                              created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_step_up_tokens_token ON step_up_tokens(token);
+CREATE INDEX idx_step_up_tokens_user_id ON step_up_tokens(user_id);
 -- Users
 CREATE UNIQUE INDEX idx_users_email       ON users(email);
 CREATE UNIQUE INDEX idx_users_phone       ON users(phone_number);
