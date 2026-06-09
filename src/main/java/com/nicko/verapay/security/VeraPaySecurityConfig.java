@@ -53,7 +53,7 @@ public class VeraPaySecurityConfig {
     SecurityFilterChain customSecurityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(csrfConfig -> csrfConfig
-                        .ignoringRequestMatchers("/verapay/actuator/**")
+                        .ignoringRequestMatchers("/verapay/actuator/**", "/api/webhooks/mpesa/**")
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .cors(corsConfig -> corsConfig
