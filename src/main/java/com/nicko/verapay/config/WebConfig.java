@@ -1,4 +1,4 @@
-package com.nicko.verapay.config.web;
+package com.nicko.verapay.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;

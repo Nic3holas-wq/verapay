@@ -132,6 +132,31 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- Redis -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j_jdk17-core</artifactId>
+			<version>8.15.0</version>
+			<scope>compile</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j_jdk17-redis-common</artifactId>
+			<version>8.15.0</version>
+		</dependency>
+
+		<!-- Bucket4j Lettuce integration -->
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j_jdk17-lettuce</artifactId>
+			<version>8.15.0</version>
+		</dependency>
 	</dependencies>
 
 	<build>
