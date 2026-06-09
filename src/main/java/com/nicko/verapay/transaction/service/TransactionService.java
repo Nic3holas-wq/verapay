@@ -4,9 +4,12 @@ package com.nicko.verapay.transaction.service;
 import com.nicko.verapay.auth.StepUpService;
 import com.nicko.verapay.constants.ApplicationConstants;
 import com.nicko.verapay.dto.*;
+import com.nicko.verapay.dto.mpesa.StkPushResponseDto;
 import com.nicko.verapay.entity.*;
 import com.nicko.verapay.exception.InsufficientFundsException;
 import com.nicko.verapay.exception.WalletNotFoundException;
+import com.nicko.verapay.payments.service.MpesaB2CService;
+import com.nicko.verapay.payments.service.MpesaC2BService;
 import com.nicko.verapay.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,109 +30,66 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
     private final StepUpService stepUpService;
+    // Inject Mpesa services
+    private final MpesaC2BService mpesaC2BService;
+    private final MpesaB2CService mpesaB2CService;
 
     // DEPOSIT
     @Transactional
     public TransactionResponseDto deposit(DepositRequestDto request) {
-
-        // 1. Get logged-in user's wallet
         String email = getLoggedInEmail();
         Wallet wallet = getWalletByEmail(email);
 
-        // 2. Check idempotency — prevent duplicate transactions
-        if (transactionRepository.findByIdempotencyKey(
-                request.idempotencyKey()).isPresent()) {
-            log.warn("Duplicate deposit request for key: {}",
-                    request.idempotencyKey());
+        if (transactionRepository.findByIdempotencyKey(request.idempotencyKey()).isPresent()) {
             throw new IllegalArgumentException("Duplicate transaction request");
         }
 
-        // 3. Credit wallet balance
-        BigDecimal balanceBefore = wallet.getBalance();
-        BigDecimal balanceAfter = balanceBefore.add(request.amount());
-        wallet.setBalance(balanceAfter);
-        walletRepository.save(wallet);
+        // 1. Create PENDING transaction record (Store checkoutRequestId here!)
+        StkPushResponseDto stkResponse = mpesaC2BService.initiateStkPush(
+                request.phoneNumber(), request.amount(), request.idempotencyKey());
 
-        // 4. Create transaction record
         Transaction transaction = createTransaction(
-                null,
-                wallet,
-                request.amount(),
+                null, wallet, request.amount(),
                 ApplicationConstants.TRANSACTION_TYPE_DEPOSIT,
-                ApplicationConstants.TRANSACTION_STATUS_SUCCESS,
-                request.idempotencyKey(),
-                request.description()
+                ApplicationConstants.TRANSACTION_STATUS_PENDING,
+                request.idempotencyKey(), request.description()
         );
 
-        // 5. Create ledger entry
-        createLedgerEntry(
-                wallet,
-                transaction,
-                request.amount(),
-                balanceAfter,
-                ApplicationConstants.LEDGER_CREDIT
-        );
+        // Store the checkoutRequestId so the Webhook can find this transaction later
+        transaction.setCheckoutRequestId(stkResponse.checkoutRequestID());
+        transactionRepository.save(transaction);
 
-        log.info("Confirmed deposit of {} KES to wallet {} successful",
-                request.amount(), wallet.getId());
+        // 2. DO NOT update balance or ledger here.
+        // This happens ONLY in MpesaWebhookController upon success.
 
-        return buildResponse(transaction, balanceAfter);
+        return buildResponse(transaction, wallet.getBalance());
     }
 
     // WITHDRAW
     @Transactional
     public TransactionResponseDto withdraw(WithdrawRequestDto request) {
-
-        // 1. Validate step-up token
         stepUpService.validateStepUpToken(request.stepUpToken());
-
-        // 2. Get logged-in user's wallet
         String email = getLoggedInEmail();
         Wallet wallet = getWalletByEmail(email);
 
-        // 3. Check idempotency
-        if (transactionRepository.findByIdempotencyKey(
-                request.idempotencyKey()).isPresent()) {
-            throw new IllegalArgumentException("Duplicate transaction request");
-        }
-
-        // 4. Check sufficient balance
         if (wallet.getBalance().compareTo(request.amount()) < 0) {
-            log.warn("Insufficient funds for wallet: {}", wallet.getId());
-            throw new InsufficientFundsException("Insufficient funds. " +
-                    "Available balance: " + wallet.getBalance() + " KES");
+            throw new InsufficientFundsException("Insufficient funds");
         }
 
-        // 5. Debit wallet balance
-        BigDecimal balanceBefore = wallet.getBalance();
-        BigDecimal balanceAfter = balanceBefore.subtract(request.amount());
-        wallet.setBalance(balanceAfter);
-        walletRepository.save(wallet);
-
-        // 6. Create transaction record
+        // 1. Create PENDING transaction record
         Transaction transaction = createTransaction(
-                wallet,
-                null,
-                request.amount(),
+                wallet, null, request.amount(),
                 ApplicationConstants.TRANSACTION_TYPE_WITHDRAW,
-                ApplicationConstants.TRANSACTION_STATUS_SUCCESS,
-                request.idempotencyKey(),
-                request.description()
+                ApplicationConstants.TRANSACTION_STATUS_PENDING,
+                request.idempotencyKey(), request.description()
         );
 
-        // 7. Create ledger entry
-        createLedgerEntry(
-                wallet,
-                transaction,
-                request.amount(),
-                balanceAfter,
-                ApplicationConstants.LEDGER_DEBIT
-        );
+        // 2. Initiate API
+        mpesaB2CService.initiateB2C(
+                request.phoneNumber(), request.amount(), transaction.getTransactionRef());
 
-        log.info("Confirmed withdrawal of {} KES from wallet {} successful",
-                request.amount(), wallet.getId());
-
-        return buildResponse(transaction, balanceAfter);
+        // 3. DO NOT update balance or ledger here.
+        return buildResponse(transaction, wallet.getBalance());
     }
 
     // TRANSFER

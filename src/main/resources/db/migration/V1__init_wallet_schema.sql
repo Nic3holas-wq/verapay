@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS users(
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP
     );
-ALTER TABLE users ADD COLUMN transaction_pin VARCHAR(255) NOT NULL DEFAULT 'UNSET';
 
 ALTER TABLE users
     ADD CONSTRAINT fk_users_role
@@ -29,19 +28,21 @@ CREATE TABLE IF NOT EXISTS wallets(
     );
 
 CREATE TABLE IF NOT EXISTS transactions(
-                                           id BIGSERIAL PRIMARY KEY,
-                                           from_wallet_id BIGINT REFERENCES wallets(id),
+    id BIGSERIAL PRIMARY KEY,
+    from_wallet_id BIGINT REFERENCES wallets(id),
     to_wallet_id BIGINT NOT NULL REFERENCES wallets(id),
     amount DECIMAL(19,4) NOT NULL,
     type VARCHAR(20) NOT NULL, -- TRANSFER, DEPOSIT, WITHDRAW
     status VARCHAR(20) NOT NULL, --PENDING, SUCCESS, FAILED, REVERSED
     idempotency_key VARCHAR(100) NOT NULL UNIQUE,
     transaction_ref VARCHAR(100) NOT NULL UNIQUE,
+    checkout_request_id VARCHAR(100),
     description VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_amount_positive CHECK (amount > 0),
     CONSTRAINT chk_different_wallets CHECK (from_wallet_id != to_wallet_id)
     );
+CREATE INDEX idx_tx_checkout_request_id ON transactions(checkout_request_id);
 
 CREATE TABLE IF NOT EXISTS ledger_entries(
                                              id BIGSERIAL PRIMARY KEY,
