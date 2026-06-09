@@ -21,6 +21,20 @@ public class ApplicationConstants {
 
     public static final String  SYSTEM = "SYSTEM";
 
+    // Transaction Types
+    public static final String TRANSACTION_TYPE_DEPOSIT  = "DEPOSIT";
+    public static final String TRANSACTION_TYPE_WITHDRAW = "WITHDRAW";
+    public static final String TRANSACTION_TYPE_TRANSFER = "TRANSFER";
+
+    // Transaction Statuses
+    public static final String TRANSACTION_STATUS_PENDING = "PENDING";
+    public static final String TRANSACTION_STATUS_SUCCESS = "SUCCESS";
+    public static final String TRANSACTION_STATUS_FAILED  = "FAILED";
+
+    // Ledger Entry Types
+    public static final String LEDGER_DEBIT  = "DEBIT";
+    public static final String LEDGER_CREDIT = "CREDIT";
+
 
 
 }
