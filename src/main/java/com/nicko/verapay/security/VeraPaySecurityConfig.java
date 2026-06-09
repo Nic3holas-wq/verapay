@@ -1,7 +1,10 @@
 package com.nicko.verapay.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nicko.verapay.security.filter.JwtTokenValidatorFilter;
+import com.nicko.verapay.security.filter.RateLimitFilter;
 import com.nicko.verapay.security.util.CorsProperties;
+import com.nicko.verapay.service.RateLimitService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -44,31 +47,37 @@ public class VeraPaySecurityConfig {
     private final List<String> customerPaths;
 
     private final CorsProperties corsProperties;
+    private final RateLimitFilter rateLimitFilter;
 
     @Bean
-    SecurityFilterChain customSecurityFilterChain(HttpSecurity http) {
-        return http.csrf(csrfConfig -> csrfConfig.ignoringRequestMatchers("/verapay/actuator/**")
+    SecurityFilterChain customSecurityFilterChain(HttpSecurity http) throws Exception {
+        return http
+                .csrf(csrfConfig -> csrfConfig
+                        .ignoringRequestMatchers("/verapay/actuator/**")
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
-                    .cors(corsConfig -> corsConfig.configurationSource(corsConfigurationSource()))
-                    .authorizeHttpRequests(requests -> {
-                        publicPaths.forEach(path -> requests.requestMatchers(path).permitAll());
-                        adminPaths.forEach(path -> requests.requestMatchers(path).hasRole("ADMIN"));
-                        customerPaths.forEach(path -> requests.requestMatchers(path).hasRole("CUSTOMER"));
-                        securedPaths.forEach(path -> requests.requestMatchers(path).authenticated());
-                        requests.anyRequest().denyAll();
-                    })
-                     .addFilterBefore(new JwtTokenValidatorFilter(publicPaths), BasicAuthenticationFilter.class)
-                    .formLogin(flc -> flc.disable())
-                    .httpBasic(hbc -> hbc.disable())
+                .cors(corsConfig -> corsConfig
+                        .configurationSource(corsConfigurationSource()))
+                .authorizeHttpRequests(requests -> {
+                    publicPaths.forEach(path -> requests.requestMatchers(path).permitAll());
+                    adminPaths.forEach(path -> requests.requestMatchers(path).hasRole("ADMIN"));
+                    customerPaths.forEach(path -> requests.requestMatchers(path).hasRole("CUSTOMER"));
+                    securedPaths.forEach(path -> requests.requestMatchers(path).authenticated());
+                    requests.anyRequest().denyAll();
+                })
+                .addFilterBefore(rateLimitFilter, BasicAuthenticationFilter.class) // ← rate limit first
+                .addFilterBefore(new JwtTokenValidatorFilter(publicPaths), BasicAuthenticationFilter.class)
+                .formLogin(flc -> flc.disable())
+                .httpBasic(hbc -> hbc.disable())
                 .exceptionHandling(exception -> exception
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                             response.setContentType("application/json");
-                            response.getWriter().write("{\"error\": \"Access Denied\", \"message\": \"You don't have permission to access this resource\"}");
-                        })
-                )
-                    .build();
+                            response.getWriter().write(
+                                    "{\"error\": \"Access Denied\", " +
+                                            "\"message\": \"You don't have permission to access this resource\"}");
+                        }))
+                .build();
     }
 
     @Bean
@@ -86,7 +95,8 @@ public class VeraPaySecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationProvider authenticationProvider) {
+    public AuthenticationManager authenticationManager(
+            AuthenticationProvider authenticationProvider) {
         return new ProviderManager(authenticationProvider);
     }
 
