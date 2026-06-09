@@ -23,7 +23,8 @@ public class PathsConfig {
                 "/swagger-resources/**",
                 "/swagger-ui.html",
                 "/webjars/**",
-                "/verapay/actuator/**"
+                "/verapay/actuator/**",
+                "/api/webhooks/mpesa/**"
         );
     }
 

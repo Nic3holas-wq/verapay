@@ -74,5 +74,8 @@ public class Transaction {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Size(max = 100)
+    @Column(name = "checkout_request_id", length = 100)
+    private String checkoutRequestId;
 
 }

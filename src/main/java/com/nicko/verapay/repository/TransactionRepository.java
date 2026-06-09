@@ -11,6 +11,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
 
+    Optional<Transaction> findByTransactionRef(String transactionRef);
+
     List<Transaction> findByFromWalletOrToWalletOrderByCreatedAtDesc(
             Wallet fromWallet, Wallet toWallet);
+
+    Optional<Transaction> findByCheckoutRequestId(String checkoutRequestId);
 }

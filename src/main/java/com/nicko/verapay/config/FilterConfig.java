@@ -6,6 +6,7 @@ import com.nicko.verapay.service.RateLimitService;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestClient;
 
 @Configuration
 public class FilterConfig {
@@ -29,5 +30,10 @@ public class FilterConfig {
                 new FilterRegistrationBean<>(rateLimitFilter);
         registration.setEnabled(false); // ← disable auto-registration
         return registration;
+    }
+
+    @Bean
+    public RestClient restClient() {
+        return RestClient.create();
     }
 }
