@@ -8,24 +8,28 @@ CREATE TABLE IF NOT EXISTS users(
     role_id BIGINT NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP
-    );
+    created_by VARCHAR(100),
+    updated_at TIMESTAMP,
+    updated_by VARCHAR(100)
+);
 
 ALTER TABLE users
     ADD CONSTRAINT fk_users_role
         FOREIGN KEY (role_id) REFERENCES roles(id);
 
 CREATE TABLE IF NOT EXISTS wallets(
-                                      id BIGSERIAL PRIMARY KEY,
-                                      owner_id BIGINT NOT NULL UNIQUE REFERENCES users(id),
+    id BIGSERIAL PRIMARY KEY,
+    owner_id BIGINT NOT NULL UNIQUE REFERENCES users(id),
     balance DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
     currency VARCHAR(10) NOT NULL DEFAULT 'KES',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     version BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_by VARCHAR(100),
     updated_at TIMESTAMP,
+    updated_by VARCHAR(100),
     CONSTRAINT chk_balance_non_negative CHECK (balance >= 0)
-    );
+);
 
 CREATE TABLE IF NOT EXISTS transactions(
     id BIGSERIAL PRIMARY KEY,

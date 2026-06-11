@@ -27,7 +27,7 @@ public class BaseEntity implements Serializable {
     private Instant createdAt;
 
     @CreatedBy
-    @Column(name = "CREATED_BY", nullable = false, length = 20, updatable = false)
+    @Column(name = "CREATED_BY", nullable = false, length = 100, updatable = false)
     private String createdBy;
 
     @LastModifiedDate
@@ -36,7 +36,7 @@ public class BaseEntity implements Serializable {
     private Instant updatedAt;
 
     @LastModifiedBy
-    @Column(name = "UPDATED_BY", length = 20,insertable = false)
+    @Column(name = "UPDATED_BY", length = 100,insertable = false)
     private String updatedBy;
 
 }
