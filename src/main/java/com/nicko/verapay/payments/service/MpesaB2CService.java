@@ -56,6 +56,12 @@ public class MpesaB2CService {
                 .retrieve()
                 .body(B2CResponseDto.class);
 
+        log.info("B2C Response: ResponseCode={} ResponseDescription={} ConversationID={} OriginatorConversationID={}",
+                response.responseCode(),
+                response.responseDescription(),
+                response.conversationID(),
+                response.originatorConversationID());
+        
         log.info("B2C initiated for phone: {} amount: {}",
                 formattedPhone, amount);
         return response;

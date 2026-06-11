@@ -8,6 +8,7 @@ import com.nicko.verapay.dto.mpesa.StkPushResponseDto;
 import com.nicko.verapay.entity.*;
 import com.nicko.verapay.exception.InsufficientFundsException;
 import com.nicko.verapay.exception.WalletNotFoundException;
+import com.nicko.verapay.notifications.service.EmailService;
 import com.nicko.verapay.payments.service.MpesaB2CService;
 import com.nicko.verapay.payments.service.MpesaC2BService;
 import com.nicko.verapay.repository.*;
@@ -30,9 +31,9 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
     private final StepUpService stepUpService;
-    // Inject Mpesa services
     private final MpesaC2BService mpesaC2BService;
     private final MpesaB2CService mpesaB2CService;
+    private final EmailService emailService;
 
     // DEPOSIT
     @Transactional
@@ -157,6 +158,26 @@ public class TransactionService {
 
         createLedgerEntry(recipientWallet, transaction, request.amount(),
                 recipientBalanceAfter, ApplicationConstants.LEDGER_CREDIT);
+
+        // Send email to sender
+        emailService.sendTransferSenderConfirmation(
+                senderWallet.getOwner().getEmail(),
+                senderWallet.getOwner().getFullName(),
+                request.recipientEmail(),
+                request.amount(),
+                senderBalanceAfter,
+                transaction.getTransactionRef()
+        );
+
+// Send email to recipient
+        emailService.sendTransferRecipientConfirmation(
+                recipientWallet.getOwner().getEmail(),
+                recipientWallet.getOwner().getFullName(),
+                senderEmail,
+                request.amount(),
+                recipientBalanceAfter,
+                transaction.getTransactionRef()
+        );
 
         log.info("Confirmed Transfer of {} KES from {} to {} successful",
                 request.amount(), senderEmail, request.recipientEmail());

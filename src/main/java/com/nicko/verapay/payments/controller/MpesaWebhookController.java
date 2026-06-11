@@ -5,7 +5,9 @@ import com.nicko.verapay.dto.mpesa.B2CResultDto;
 import com.nicko.verapay.dto.mpesa.StkCallbackDto;
 import com.nicko.verapay.entity.LedgerEntry;
 import com.nicko.verapay.entity.Transaction;
+import com.nicko.verapay.entity.User;
 import com.nicko.verapay.entity.Wallet;
+import com.nicko.verapay.notifications.service.EmailService;
 import com.nicko.verapay.repository.LedgerEntryRepository;
 import com.nicko.verapay.repository.TransactionRepository;
 import com.nicko.verapay.repository.WalletRepository;
@@ -27,6 +29,7 @@ public class MpesaWebhookController {
     private final TransactionRepository transactionRepository;
     private final WalletRepository walletRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
+    private final EmailService emailService;
 
     // STK Push Callback — deposit result
     @PostMapping("/stk/callback")
@@ -56,6 +59,16 @@ public class MpesaWebhookController {
 
             // Record the ledger entry here
             createLedgerEntry(wallet, transaction, transaction.getAmount(), wallet.getBalance(), ApplicationConstants.LEDGER_CREDIT);
+
+            // Send deposit confirmation email
+            User user = transaction.getToWallet().getOwner();
+            emailService.sendDepositConfirmation(
+                    user.getEmail(),
+                    user.getFullName(),
+                    transaction.getAmount(),
+                    transaction.getToWallet().getBalance(),
+                    transaction.getTransactionRef()
+            );
 
         } else {
             // FAILED: Simply mark as failed.
@@ -94,6 +107,17 @@ public class MpesaWebhookController {
 
             // Record the ledger entry
             createLedgerEntry(wallet, transaction, transaction.getAmount(), newBalance, ApplicationConstants.LEDGER_DEBIT);
+
+            // Send withdrawal confirmation email
+            User user = transaction.getFromWallet().getOwner();
+            emailService.sendWithdrawalConfirmation(
+                    user.getEmail(),
+                    user.getFullName(),
+                    transaction.getAmount(),
+                    transaction.getFromWallet().getBalance(),
+                    transaction.getTransactionRef()
+            );
+
             log.info("Withdrawal confirmed: {}", transaction.getTransactionRef());
         } else {
             // FAILED: Simply mark as failed.
