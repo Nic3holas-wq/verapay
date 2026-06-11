@@ -5,17 +5,16 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-      POSTGRES_DB: verapay
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
 
   redis:
     image: redis:latest
     container_name: verapayredis
     ports:
       - "6379:6379"
-    command: redis-server --requirepass redisroot
-    #                                    ↑ password for security
+    command: redis-server --requirepass ${REDIS_PASSWORD}
 
   grafana-lgtm:
     image: 'grafana/otel-lgtm:latest'
