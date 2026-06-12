@@ -3,8 +3,11 @@ package com.nicko.verapay.transaction.service;
 
 import com.nicko.verapay.auth.StepUpService;
 import com.nicko.verapay.constants.ApplicationConstants;
-import com.nicko.verapay.dto.*;
 import com.nicko.verapay.dto.mpesa.StkPushResponseDto;
+import com.nicko.verapay.dto.transactions.DepositRequestDto;
+import com.nicko.verapay.dto.transactions.TransactionResponseDto;
+import com.nicko.verapay.dto.transactions.TransferRequestDto;
+import com.nicko.verapay.dto.transactions.WithdrawRequestDto;
 import com.nicko.verapay.entity.*;
 import com.nicko.verapay.exception.InsufficientFundsException;
 import com.nicko.verapay.exception.WalletNotFoundException;

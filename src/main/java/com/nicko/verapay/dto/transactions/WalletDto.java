@@ -1,4 +1,4 @@
-package com.nicko.verapay.dto;
+package com.nicko.verapay.dto.transactions;
 
 import java.math.BigDecimal;
 import java.time.Instant;

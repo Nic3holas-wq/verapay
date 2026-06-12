@@ -1,6 +1,9 @@
 package com.nicko.verapay.transaction.controller;
 
-import com.nicko.verapay.dto.*;
+import com.nicko.verapay.dto.transactions.DepositRequestDto;
+import com.nicko.verapay.dto.transactions.TransactionResponseDto;
+import com.nicko.verapay.dto.transactions.TransferRequestDto;
+import com.nicko.verapay.dto.transactions.WithdrawRequestDto;
 import com.nicko.verapay.transaction.service.TransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

@@ -41,7 +41,9 @@ public class PathsConfig {
         return List.of(
                 "/api/transactions/deposit",
                 "/api/transactions/withdraw",
-                "/api/transactions/transfer"
+                "/api/transactions/transfer",
+                "/api/wallet/profile",
+                "/api/wallet/transactions"
         );
     }
 

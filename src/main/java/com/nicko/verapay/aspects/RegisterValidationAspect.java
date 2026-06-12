@@ -1,6 +1,6 @@
 package com.nicko.verapay.aspects;
 
-import com.nicko.verapay.dto.RegisterRequestDto;
+import com.nicko.verapay.dto.authentication.RegisterRequestDto;
 import com.nicko.verapay.entity.User;
 import com.nicko.verapay.exception.RegistrationValidationException;
 import com.nicko.verapay.repository.UserRepository;
