@@ -1,6 +1,6 @@
 package com.nicko.verapay.aspects;
 
-import com.nicko.verapay.dto.LoginResponseDto;
+import com.nicko.verapay.dto.authentication.LoginResponseDto;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.AfterReturning;

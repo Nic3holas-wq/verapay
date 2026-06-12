@@ -1,21 +1,19 @@
-package com.nicko.verapay.dto;
+package com.nicko.verapay.dto.transactions;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-
 import java.math.BigDecimal;
 
-public record WithdrawRequestDto(
-        @NotNull(message = "Amount is required")
-        @DecimalMin(value = "1.00", message = "Minimum withdrawal is KES 1.00")
-        BigDecimal amount,
+public record TransferRequestDto(
+        @NotBlank(message = "Recipient email is required")
+        @Email(message = "Invalid recipient email")
+        String recipientEmail,
 
-        @NotBlank(message = "Phone number is required")
-        @Pattern(regexp = "^(0|254|\\+254)\\d{9}$",
-                message = "Invalid Kenyan phone number")
-        String phoneNumber,  // ← add this
+        @NotNull(message = "Amount is required")
+        @DecimalMin(value = "1.00", message = "Minimum transfer is KES 1.00")
+        BigDecimal amount,
 
         String description,
 

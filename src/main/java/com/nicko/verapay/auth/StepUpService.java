@@ -1,6 +1,6 @@
 package com.nicko.verapay.auth;
 
-import com.nicko.verapay.dto.StepUpRequestDto;
+import com.nicko.verapay.dto.transactions.StepUpRequestDto;
 import com.nicko.verapay.entity.StepUpToken;
 import com.nicko.verapay.entity.User;
 import com.nicko.verapay.exception.UnauthorizedException;

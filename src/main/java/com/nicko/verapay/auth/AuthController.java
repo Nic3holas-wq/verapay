@@ -2,6 +2,10 @@ package com.nicko.verapay.auth;
 
 import com.nicko.verapay.constants.ApplicationConstants;
 import com.nicko.verapay.dto.*;
+import com.nicko.verapay.dto.authentication.LoginRequestDto;
+import com.nicko.verapay.dto.authentication.LoginResponseDto;
+import com.nicko.verapay.dto.authentication.RegisterRequestDto;
+import com.nicko.verapay.dto.transactions.StepUpRequestDto;
 import com.nicko.verapay.entity.RefreshToken;
 import com.nicko.verapay.entity.Role;
 import com.nicko.verapay.entity.User;

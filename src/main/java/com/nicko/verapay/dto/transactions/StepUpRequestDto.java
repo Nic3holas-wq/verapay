@@ -1,4 +1,4 @@
-package com.nicko.verapay.dto;
+package com.nicko.verapay.dto.transactions;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
