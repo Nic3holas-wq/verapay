@@ -21,14 +21,19 @@ public class RedisConfig {
     @Value("${REDIS_PASSWORD:redisroot}")
     private String redisPassword;
 
+    @Value("${REDIS_SSL:false}")
+    private boolean redisSsl;
+
     @Bean
     public RedisClient redisClient() {
-        RedisURI redisURI = RedisURI.builder()
+        io.lettuce.core.RedisURI.Builder builder = io.lettuce.core.RedisURI.builder()
                 .withHost(redisHost)
                 .withPort(redisPort)
-                .withPassword(redisPassword.toCharArray())
-                .build();
-        return RedisClient.create(redisURI);
+                .withPassword(redisPassword.toCharArray());
+        if (redisSsl) {
+            builder.withSsl(true);
+        }
+        return RedisClient.create(builder.build());
     }
 
     @Bean
