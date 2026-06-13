@@ -94,6 +94,94 @@ public class EmailService {
         sendEmail(toEmail, subject, body);
     }
 
+    @Async
+    public void sendTransactionReversalEmail(
+            String toEmail,
+            String fullName,
+            BigDecimal amount,
+            BigDecimal balanceAfter,
+            String originalTransactionRef,
+            String reversalTransactionRef,
+            String reason) {
+
+        String subject = "⚠️ Transaction Reversed - " + originalTransactionRef;
+        String body = buildReversalEmail(
+                fullName, amount, balanceAfter,
+                originalTransactionRef, reversalTransactionRef, reason);
+        sendEmail(toEmail, subject, body);
+    }
+
+    private String buildReversalEmail(
+            String fullName,
+            BigDecimal amount,
+            BigDecimal balanceAfter,
+            String originalTransactionRef,
+            String reversalTransactionRef,
+            String reason) {
+        return """
+            <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background-color: #00B272; padding: 20px; text-align: center;">
+                    <h1 style="color: white; margin: 0;">VeraPay</h1>
+                </div>
+                <div style="padding: 30px; background-color: #f9f9f9;">
+                    <h2 style="color: #e67e22;">Transaction Reversed ⚠️</h2>
+                    <p>Dear <strong>%s</strong>,</p>
+                    <p>A transaction on your account has been reversed by VeraPay support.</p>
+                    <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <table width="100%%">
+                            <tr>
+                                <td style="color: #666;">Amount Reversed:</td>
+                                <td style="text-align: right; font-weight: bold;">
+                                    KES %s
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="color: #666;">New Balance:</td>
+                                <td style="text-align: right; font-weight: bold;">
+                                    KES %s
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="color: #666;">Original Transaction:</td>
+                                <td style="text-align: right; color: #666;">%s</td>
+                            </tr>
+                            <tr>
+                                <td style="color: #666;">Reversal Reference:</td>
+                                <td style="text-align: right; color: #666;">%s</td>
+                            </tr>
+                            <tr>
+                                <td style="color: #666;">Reason:</td>
+                                <td style="text-align: right; color: #666;">%s</td>
+                            </tr>
+                            <tr>
+                                <td style="color: #666;">Date:</td>
+                                <td style="text-align: right; color: #666;">%s</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <p style="color: #666; font-size: 12px;">
+                        If you believe this is an error, please contact support.
+                    </p>
+                </div>
+                <div style="background-color: #333; padding: 15px; text-align: center;">
+                    <p style="color: #999; font-size: 12px; margin: 0;">
+                        © 2026 VeraPay. All rights reserved.
+                    </p>
+                </div>
+            </body>
+            </html>
+            """.formatted(
+                fullName,
+                amount,
+                balanceAfter,
+                originalTransactionRef,
+                reversalTransactionRef,
+                reason,
+                getCurrentDateTime()
+        );
+    }
+
     // Core send method
     private void sendEmail(String to, String subject, String htmlBody) {
         try {

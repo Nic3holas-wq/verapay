@@ -35,6 +35,10 @@ public class ApplicationConstants {
     public static final String LEDGER_DEBIT  = "DEBIT";
     public static final String LEDGER_CREDIT = "CREDIT";
 
+//    Transaction reversal
+    public static final String TRANSACTION_STATUS_REVERSED = "REVERSED";
+    public static final String TRANSACTION_TYPE_REVERSAL = "REVERSAL";
+
 
 
 }

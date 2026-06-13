@@ -42,11 +42,16 @@ CREATE TABLE IF NOT EXISTS transactions(
     transaction_ref VARCHAR(100) NOT NULL UNIQUE,
     checkout_request_id VARCHAR(100),
     description VARCHAR(255),
+    reversed_transaction_id BIGINT REFERENCES transactions(id),
+    reversal_reason VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_amount_positive CHECK (amount > 0),
     CONSTRAINT chk_different_wallets CHECK (from_wallet_id != to_wallet_id)
     );
 CREATE INDEX idx_tx_checkout_request_id ON transactions(checkout_request_id);
+
+ALTER TABLE transactions ADD COLUMN reversed_transaction_id BIGINT REFERENCES transactions(id);
+ALTER TABLE transactions ADD COLUMN reversal_reason VARCHAR(255);
 
 CREATE TABLE IF NOT EXISTS ledger_entries(
     id BIGSERIAL PRIMARY KEY,
