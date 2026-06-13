@@ -69,6 +69,13 @@ public class Transaction {
     @Column(name = "description")
     private String description;
 
+    @Column(name = "reversed_transaction_id")
+    private Long reversedTransactionId;
+
+    @Size(max = 255)
+    @Column(name = "reversal_reason")
+    private String reversalReason;
+
     @NotNull
     @ColumnDefault("now()")
     @Column(name = "created_at", nullable = false)
