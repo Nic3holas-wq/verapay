@@ -1,8 +1,11 @@
 package com.nicko.verapay.admin.controller;
 
+import com.nicko.verapay.admin.service.AdminTransactionReversalService;
 import com.nicko.verapay.admin.service.AdminTransactionService;
 import com.nicko.verapay.admin.service.AdminUserService;
+import com.nicko.verapay.dto.TransactionReversalRequestDto;
 import com.nicko.verapay.dto.admin.*;
+import com.nicko.verapay.dto.transactions.TransactionResponseDto;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -16,6 +19,7 @@ public class AdminController {
 
     private final AdminUserService adminUserService;
     private final AdminTransactionService adminTransactionService;
+    private final AdminTransactionReversalService adminTransactionReversalService;
 
     // GET /api/admin/users?email=&isActive=&page=0&size=20
     @GetMapping(value = "/users", version = "1.0")
@@ -58,5 +62,14 @@ public class AdminController {
     @GetMapping(value = "/transactions/stats", version = "1.0")
     public ResponseEntity<TransactionStatsDto> getTransactionStats() {
         return ResponseEntity.ok(adminTransactionService.getStats());
+    }
+
+    // PATCH /api/admin/transactions/{id}/reverse
+    @PatchMapping(value = "/transactions/{id}/reverse", version = "1.0")
+    public ResponseEntity<TransactionResponseDto> reverseTransaction(
+            @PathVariable Long id,
+            @RequestBody @Valid TransactionReversalRequestDto request) {
+        return ResponseEntity.ok(
+                adminTransactionReversalService.reverseTransaction(id, request.reason()));
     }
 }
