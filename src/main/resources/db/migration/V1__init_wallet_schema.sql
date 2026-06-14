@@ -84,9 +84,11 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
     user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     expires_at      TIMESTAMP NOT NULL,
     is_revoked      BOOLEAN NOT NULL DEFAULT FALSE,
+    revoked_at TIMESTAMP,
     previous_token  VARCHAR(255),
     created_at      TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
 
 -- Index for fast token lookup
 CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);

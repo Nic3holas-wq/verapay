@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.time.Instant;
 import java.util.Base64;
 
 @Service
@@ -17,7 +18,20 @@ public class MpesaAuthService {
     private final MpesaConfig mpesaConfig;
     private final RestClient restClient;
 
-    public String getAccessToken() {
+    private static final long EXPIRY_BUFFER_SECONDS = 300;
+
+    private volatile String cachedToken;
+    private volatile Instant tokenExpiryTime;
+
+    public synchronized String getAccessToken() {
+
+        // Return cached token if still valid
+        if (cachedToken != null && tokenExpiryTime != null
+                && Instant.now().isBefore(tokenExpiryTime)) {
+            log.debug("Using cached Mpesa access token (valid until {})", tokenExpiryTime);
+            return cachedToken;
+        }
+
         // 1. Encode consumer key and secret
         String credentials = mpesaConfig.getConsumerKey()
                 + ":" + mpesaConfig.getConsumerSecret();
@@ -36,7 +50,23 @@ public class MpesaAuthService {
             throw new RuntimeException("Failed to get Mpesa access token");
         }
 
-        log.info("Mpesa access token obtained successfully");
-        return response.accessToken();
+        // 3. Cache token, subtracting a 5-minute buffer from its real TTL
+        long expiresInSeconds = parseExpiresIn(response.expiresIn());
+        long effectiveTtl = Math.max(expiresInSeconds - EXPIRY_BUFFER_SECONDS, 0);
+
+        this.cachedToken = response.accessToken();
+        this.tokenExpiryTime = Instant.now().plusSeconds(effectiveTtl);
+
+        log.info("Mpesa access token obtained successfully (cached until {})", tokenExpiryTime);
+        return cachedToken;
+    }
+
+    private long parseExpiresIn(String expiresIn) {
+        try {
+            return Long.parseLong(expiresIn);
+        } catch (NumberFormatException | NullPointerException e) {
+            log.warn("Could not parse expires_in '{}', defaulting to 3600s", expiresIn);
+            return 3600;
+        }
     }
 }

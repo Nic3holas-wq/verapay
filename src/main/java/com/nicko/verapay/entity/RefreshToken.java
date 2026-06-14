@@ -28,6 +28,9 @@ public class RefreshToken {
     @Column(nullable = false)
     private boolean revoked = false;
 
+    @Column(name = "revoked_at")
+    private Instant revokedAt;
+
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
 
