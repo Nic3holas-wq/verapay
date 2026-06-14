@@ -1,6 +1,7 @@
 package com.nicko.verapay.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nicko.verapay.security.filter.MpesaIpFilter;
 import com.nicko.verapay.security.filter.RateLimitFilter;
 import com.nicko.verapay.service.RateLimitService;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -35,5 +36,19 @@ public class FilterConfig {
     @Bean
     public RestClient restClient() {
         return RestClient.create();
+    }
+
+    @Bean
+    public MpesaIpFilter mpesaIpFilter(MpesaConfig mpesaConfig) {
+        return new MpesaIpFilter(mpesaConfig.getAllowedIps());
+    }
+
+    @Bean
+    public FilterRegistrationBean<MpesaIpFilter> mpesaIpFilterRegistration(
+            MpesaIpFilter mpesaIpFilter) {
+        FilterRegistrationBean<MpesaIpFilter> registrationBean =
+                new FilterRegistrationBean<>(mpesaIpFilter);
+        registrationBean.setOrder(1);
+        return registrationBean;
     }
 }
