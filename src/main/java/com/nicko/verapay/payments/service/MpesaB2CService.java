@@ -38,9 +38,11 @@ public class MpesaB2CService {
                 formattedPhone,
                 "VeraPay Withdrawal",
                 mpesaConfig.getCallbackBaseUrl()
-                        + "/api/webhooks/mpesa/b2c/timeout",
+                        + "/api/webhooks/mpesa/b2c/timeout?token="
+                        + mpesaConfig.getWebhookToken(),
                 mpesaConfig.getCallbackBaseUrl()
-                        + "/api/webhooks/mpesa/b2c/result",
+                        + "/api/webhooks/mpesa/b2c/result?token="
+                        + mpesaConfig.getWebhookToken(),
                 "Withdrawal"
         );
 
