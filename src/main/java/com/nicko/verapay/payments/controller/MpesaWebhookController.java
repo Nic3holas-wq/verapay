@@ -8,9 +8,11 @@ import com.nicko.verapay.entity.Transaction;
 import com.nicko.verapay.entity.User;
 import com.nicko.verapay.entity.Wallet;
 import com.nicko.verapay.notifications.service.EmailService;
+import com.nicko.verapay.payments.security.WebhookTokenValidator;
 import com.nicko.verapay.repository.LedgerEntryRepository;
 import com.nicko.verapay.repository.TransactionRepository;
 import com.nicko.verapay.repository.WalletRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -30,11 +32,17 @@ public class MpesaWebhookController {
     private final WalletRepository walletRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
     private final EmailService emailService;
+    private final WebhookTokenValidator webhookTokenValidator;
 
     // STK Push Callback — deposit result
     @PostMapping("/stk/callback")
     @Transactional
-    public ResponseEntity<?> handleStkCallback(@RequestBody StkCallbackDto callback) {
+    public ResponseEntity<?> handleStkCallback(@RequestBody StkCallbackDto callback, HttpServletRequest request) {
+        if (!webhookTokenValidator.isValid(request)) {
+            log.warn("Invalid or missing webhook token for STK callback");
+            return ResponseEntity.status(403).body("Forbidden");
+        }
+
         var stkCallback = callback.body().stkCallback();
         String checkoutRequestID = stkCallback.checkoutRequestID();
 
@@ -82,7 +90,13 @@ public class MpesaWebhookController {
     // B2C Result — withdrawal result
     @PostMapping("/b2c/result")
     @Transactional
-    public ResponseEntity<?> handleB2CResult(@RequestBody B2CResultDto result) {
+    public ResponseEntity<?> handleB2CResult(@RequestBody B2CResultDto result, HttpServletRequest request) {
+
+        if (!webhookTokenValidator.isValid(request)) {
+            log.warn("Invalid or missing webhook token for B2C result");
+            return ResponseEntity.status(403).body("Forbidden");
+        }
+
         String transactionRef = result.result().originatorConversationID();
 
         Transaction transaction = transactionRepository.findByTransactionRef(transactionRef)
@@ -134,7 +148,12 @@ public class MpesaWebhookController {
     @PostMapping("/b2c/timeout")
     @Transactional
     public ResponseEntity<?> handleB2CTimeout(
-            @RequestBody B2CResultDto result) {
+            @RequestBody B2CResultDto result, HttpServletRequest request) {
+
+        if (!webhookTokenValidator.isValid(request)) {
+            log.warn("Invalid or missing webhook token for B2C timeout");
+            return ResponseEntity.status(403).body("Forbidden");
+        }
 
         log.warn("B2C Timeout received: {}",
                 result.result().originatorConversationID());

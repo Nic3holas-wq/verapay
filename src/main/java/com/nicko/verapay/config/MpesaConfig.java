@@ -4,6 +4,10 @@ import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @Configuration
 @Getter
 public class MpesaConfig {
@@ -34,4 +38,16 @@ public class MpesaConfig {
 
     @Value("${mpesa.callback.base.url}")
     private String callbackBaseUrl;
+
+    @Value("${mpesa.allowed.ips}")
+    private String allowedIpsRaw;
+
+    @Value("${mpesa.webhook.token}")
+    private String webhookToken;
+
+    public Set<String> getAllowedIps() {
+        return Arrays.stream(allowedIpsRaw.split(","))
+                .map(String::trim)
+                .collect(Collectors.toSet());
+    }
 }

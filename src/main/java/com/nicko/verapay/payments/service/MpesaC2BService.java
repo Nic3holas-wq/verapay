@@ -53,7 +53,8 @@ public class MpesaC2BService {
                 mpesaConfig.getBusinessShortcode(),
                 formattedPhone,
                 mpesaConfig.getCallbackBaseUrl()
-                        + "/api/webhooks/mpesa/stk/callback",
+                        + "/api/webhooks/mpesa/stk/callback?token="
+                        + mpesaConfig.getWebhookToken(),
                 idempotencyKey,
                 "VeraPay Deposit"
         );
