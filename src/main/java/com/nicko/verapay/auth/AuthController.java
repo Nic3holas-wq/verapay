@@ -114,7 +114,8 @@ public class AuthController {
     }
 
     // Logout — revoke all tokens
-    @PostMapping(value = "/logout", version = "1.0")
+    @Transactional
+    @PostMapping(value = "/logout/public", version = "1.0")
     public ResponseEntity<?> logout(
             @CookieValue(value = "refreshToken", required = false) String refreshToken,
             HttpServletResponse response) {
