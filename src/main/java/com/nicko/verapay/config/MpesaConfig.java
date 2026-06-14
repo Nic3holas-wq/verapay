@@ -42,6 +42,9 @@ public class MpesaConfig {
     @Value("${mpesa.allowed.ips}")
     private String allowedIpsRaw;
 
+    @Value("${mpesa.webhook.token}")
+    private String webhookToken;
+
     public Set<String> getAllowedIps() {
         return Arrays.stream(allowedIpsRaw.split(","))
                 .map(String::trim)
