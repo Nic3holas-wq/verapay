@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -47,8 +49,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
             log.debug("Refresh rate limit check for IP: {}", ipAddress);
 
         } else if (path.contains("/auth/step-up")) {
-            String email = request.getHeader("X-User-Email") != null
-                    ? request.getHeader("X-User-Email")
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String email = (auth != null && auth.isAuthenticated() && !auth.getName().equals("anonymousUser"))
+                    ? auth.getName()
                     : ipAddress;
             probe = rateLimitService.tryConsumeStepUp(email);
             log.debug("Step-up rate limit check for: {}", email);
@@ -62,7 +65,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             } else {
                 long waitSeconds = TimeUnit.NANOSECONDS.toSeconds(
                         probe.getNanosToWaitForRefill());
-                log.warn("🚫 Rate limit exceeded for IP: {} on path: {}",
+                log.warn("Rate limit exceeded for IP: {} on path: {}",
                         ipAddress, path);
                 buildRateLimitResponse(response, waitSeconds);
             }

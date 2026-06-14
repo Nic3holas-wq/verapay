@@ -51,6 +51,7 @@ public class VeraPaySecurityConfig {
 
     @Bean
     SecurityFilterChain customSecurityFilterChain(HttpSecurity http) throws Exception {
+        JwtTokenValidatorFilter jwtTokenValidatorFilter = new JwtTokenValidatorFilter(publicPaths);
         return http
                 .csrf(csrfConfig -> csrfConfig
                         .ignoringRequestMatchers("/verapay/actuator/**", "/api/webhooks/mpesa/**")
@@ -65,8 +66,8 @@ public class VeraPaySecurityConfig {
                     securedPaths.forEach(path -> requests.requestMatchers(path).authenticated());
                     requests.anyRequest().denyAll();
                 })
-                .addFilterBefore(rateLimitFilter, BasicAuthenticationFilter.class) // ← rate limit first
-                .addFilterBefore(new JwtTokenValidatorFilter(publicPaths), BasicAuthenticationFilter.class)
+                .addFilterBefore(jwtTokenValidatorFilter, BasicAuthenticationFilter.class)
+                .addFilterAfter(rateLimitFilter, JwtTokenValidatorFilter.class)
                 .formLogin(flc -> flc.disable())
                 .httpBasic(hbc -> hbc.disable())
                 .exceptionHandling(exception -> exception
