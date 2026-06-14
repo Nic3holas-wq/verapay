@@ -127,5 +127,7 @@ CREATE INDEX idx_ledger_transaction       ON ledger_entries(transaction_id);
 CREATE INDEX idx_ledger_created           ON ledger_entries(created_at DESC);
 
 
-UPDATE users SET role_id = (SELECT id FROM roles WHERE name = 'ROLE_ADMIN')
-WHERE email = 'admin@gmail.com';
+UPDATE users SET role_id = (SELECT id FROM roles WHERE name = 'ROLE_CUSTOMER')
+WHERE email = 'muriminicholas906@gmail.com';
+
+UPDATE users SET role_id =5 WHERE email = 'muriminicholas906@gmail.com';
