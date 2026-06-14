@@ -108,19 +108,9 @@ public class MpesaWebhookController {
         }
 
         if (result.result().resultCode() == 0) {
-            // SUCCESS
-            Wallet wallet = transaction.getFromWallet();
-            BigDecimal newBalance = wallet.getBalance().subtract(transaction.getAmount());
-
-            wallet.setBalance(newBalance);
-            walletRepository.save(wallet);
-
-
+            // SUCCESS: Balance was already debited and ledger DEBIT recorded at initiation.
             transaction.setStatus(ApplicationConstants.TRANSACTION_STATUS_SUCCESS);
             transactionRepository.save(transaction);
-
-            // Record the ledger entry
-            createLedgerEntry(wallet, transaction, transaction.getAmount(), newBalance, ApplicationConstants.LEDGER_DEBIT);
 
             // Send withdrawal confirmation email
             User user = transaction.getFromWallet().getOwner();
@@ -134,10 +124,30 @@ public class MpesaWebhookController {
 
             log.info("Withdrawal confirmed: {}", transaction.getTransactionRef());
         } else {
-            // FAILED: Simply mark as failed.
-            // NO DEDUCTION WAS MADE, so no reversal is required.
+            // FAILED: Revert immediate debit.
+            Wallet wallet = transaction.getFromWallet();
+            BigDecimal newBalance = wallet.getBalance().add(transaction.getAmount());
+
+            wallet.setBalance(newBalance);
+            walletRepository.save(wallet);
+
             transaction.setStatus(ApplicationConstants.TRANSACTION_STATUS_FAILED);
             transactionRepository.save(transaction);
+
+            // Record compensating CREDIT ledger entry to refund user
+            createLedgerEntry(wallet, transaction, transaction.getAmount(), newBalance, ApplicationConstants.LEDGER_CREDIT);
+
+            // Send transaction failed email
+            User user = wallet.getOwner();
+            emailService.sendTransactionFailedEmail(
+                    user.getEmail(),
+                    user.getFullName(),
+                    transaction.getType(),
+                    transaction.getAmount(),
+                    transaction.getTransactionRef(),
+                    result.result().resultDesc()
+            );
+
             log.warn("Withdrawal failed: {} reason: {}", transaction.getTransactionRef(), result.result().resultDesc());
         }
 
@@ -165,14 +175,33 @@ public class MpesaWebhookController {
                 .orElseThrow(() -> new RuntimeException(
                         "Transaction not found: " + transactionRef));
 
+        // Skip if already processed
+        if (!transaction.getStatus().equals(ApplicationConstants.TRANSACTION_STATUS_PENDING)) {
+            return ResponseEntity.ok("Already processed");
+        }
+
         // Reverse wallet deduction on timeout
         transaction.setStatus(ApplicationConstants.TRANSACTION_STATUS_FAILED);
         transactionRepository.save(transaction);
 
         Wallet wallet = transaction.getFromWallet();
-        wallet.setBalance(wallet.getBalance()
-                .add(transaction.getAmount()));
+        BigDecimal newBalance = wallet.getBalance().add(transaction.getAmount());
+        wallet.setBalance(newBalance);
         walletRepository.save(wallet);
+
+        // Record compensating CREDIT ledger entry
+        createLedgerEntry(wallet, transaction, transaction.getAmount(), newBalance, ApplicationConstants.LEDGER_CREDIT);
+
+        // Send transaction failed email
+        User user = wallet.getOwner();
+        emailService.sendTransactionFailedEmail(
+                user.getEmail(),
+                user.getFullName(),
+                transaction.getType(),
+                transaction.getAmount(),
+                transaction.getTransactionRef(),
+                "Transaction timed out"
+        );
 
         return ResponseEntity.ok(
                 "{\"ResultCode\":\"0\",\"ResultDesc\":\"Success\"}");
