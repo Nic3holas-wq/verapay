@@ -22,17 +22,40 @@ public class RefreshTokenService {
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
 
+    private static final long REUSE_GRACE_PERIOD_SECONDS = 15;
+
     @Transactional
     public TokenPair refresh(String incomingToken) {
 
         RefreshToken stored = refreshTokenRepository.findByToken(incomingToken)
                 .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
 
-        // Reuse detection — token already used before
+        // Token already rotated/revoked
         if (stored.isRevoked()) {
-            log.warn("Refresh token reuse detected for user: {}",
-                    stored.getUser().getEmail());
-            // Revoke ALL tokens for this user — force re-login
+
+            // Grace period — likely a concurrent request that lost the
+            // rotation race, not a genuine reuse/theft attempt
+            if (stored.getRevokedAt() != null &&
+                    stored.getRevokedAt().isAfter(
+                            Instant.now().minusSeconds(REUSE_GRACE_PERIOD_SECONDS))) {
+
+                log.info("Refresh token reuse within grace period for user: {} — returning latest token",
+                        stored.getUser().getEmail());
+
+                RefreshToken latest = refreshTokenRepository
+                        .findByPreviousToken(incomingToken)
+                        .orElseThrow(() -> new UnauthorizedException(
+                                "Refresh token reuse detected. Please login again."));
+
+                User user = latest.getUser();
+                String roles = user.getRole().getName();
+                String newAccessToken = jwtUtil.generateAccessToken(user, roles);
+
+                return new TokenPair(newAccessToken, latest.getToken());
+            }
+
+            // Outside grace period — genuine reuse, revoke everything
+            log.warn("Refresh token reuse detected for user: {}", stored.getUser().getEmail());
             refreshTokenRepository.revokeAllUserTokens(stored.getUser());
             throw new UnauthorizedException(
                     "Refresh token reuse detected. All sessions revoked. Please login again.");
@@ -41,23 +64,25 @@ public class RefreshTokenService {
         // Check expiry
         if (stored.getExpiresAt().isBefore(Instant.now())) {
             stored.setRevoked(true);
+            stored.setRevokedAt(Instant.now());
             refreshTokenRepository.save(stored);
             throw new UnauthorizedException("Refresh token expired. Please login again.");
         }
 
-        // ✅ Revoke old token (rotation)
+        // Revoke old token (rotation)
         stored.setRevoked(true);
+        stored.setRevokedAt(Instant.now());
         refreshTokenRepository.save(stored);
 
-        // ✅ Issue new access token
+        // Issue new access token
         User user = stored.getUser();
         String roles = user.getRole().getName();
         String newAccessToken = jwtUtil.generateAccessToken(user, roles);
 
-        // ✅ Issue new refresh token (rotation) — linked to old token
+        // Issue new refresh token (rotation) — linked to old token
         RefreshToken newRefreshToken = jwtUtil.generateRefreshToken(user, incomingToken);
 
-        log.info("✅ Token rotated for user: {}", user.getEmail());
+        log.info("Token rotated for user: {}", user.getEmail());
         return new TokenPair(newAccessToken, newRefreshToken.getToken());
     }
 

@@ -71,7 +71,7 @@ public class AuthController {
             Cookie refreshCookie = new Cookie("refreshToken", refreshToken.getToken());
             refreshCookie.setHttpOnly(true);   // ← JS cannot read it
             refreshCookie.setSecure(true);     // ← HTTPS only
-            refreshCookie.setPath("/api/auth/refresh");
+            refreshCookie.setPath("/api/auth");
             refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7 days
             response.addCookie(refreshCookie);
 
@@ -106,7 +106,7 @@ public class AuthController {
         Cookie newCookie = new Cookie("refreshToken", tokenPair.refreshToken());
         newCookie.setHttpOnly(true);
         newCookie.setSecure(true);
-        newCookie.setPath("/api/auth/refresh");
+        newCookie.setPath("/api/auth");
         newCookie.setMaxAge(7 * 24 * 60 * 60);
         response.addCookie(newCookie);
 
@@ -129,7 +129,7 @@ public class AuthController {
         // Clear the cookie
         Cookie cookie = new Cookie("refreshToken", "");
         cookie.setMaxAge(0);
-        cookie.setPath("/api/auth/refresh");
+        cookie.setPath("/api/auth");
         response.addCookie(cookie);
 
         return ResponseEntity.ok("Logged out successfully");
