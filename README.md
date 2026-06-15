@@ -267,7 +267,8 @@ Locating logs matching a specific client-side error in a distributed system is c
 Separating logging, timing, and security checks from business services ensures a clean codebase. VeraPay implements modular AspectJ aspects to handle execution profiling (`LoggingAndPerformanceAspect`), audit successful logins (`LoginSuccessAuditAspect`), track throwables (`ExceptionAuditAspect`), and run registration check pipelines (`RegisterValidationAspect`), ensuring controllers and services only focus on their core logic.
 
 ---
-
+## Testing
+API Documentation and testing: https://verapay-production.up.railway.app/swagger-ui/index.html
 ## Author
 
 Nicholas Murimi  
