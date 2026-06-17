@@ -50,7 +50,6 @@ public class AuthController {
     private final RefreshTokenRepository refreshTokenRepository;
     private final StepUpService stepUpService;
 
-    // V1: Standard Login
 // Update login to return both tokens
     @PostMapping(value = "/login/public", version = "1.0")
     public ResponseEntity<LoginResponseDto> apiLogin(
@@ -69,8 +68,8 @@ public class AuthController {
 
             // Send refresh token as HttpOnly cookie
             Cookie refreshCookie = new Cookie("refreshToken", refreshToken.getToken());
-            refreshCookie.setHttpOnly(true);   // ← JS cannot read it
-            refreshCookie.setSecure(true);     // ← HTTPS only
+            refreshCookie.setHttpOnly(true);
+            refreshCookie.setSecure(true);
             refreshCookie.setPath("/api/auth");
             refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7 days
             response.addCookie(refreshCookie);
@@ -89,7 +88,7 @@ public class AuthController {
         }
     }
 
-    // New refresh endpoint
+    // refresh endpoint
     @PostMapping(value = "/refresh/public", version = "1.0")
     public ResponseEntity<?> refresh(
             @CookieValue(value = "refreshToken", required = false) String refreshToken,
@@ -144,7 +143,7 @@ public class AuthController {
         User user = new User();
         BeanUtils.copyProperties(registerRequestDto, user, "password", "transactionPin");
         user.setPassword(passwordEncoder.encode(registerRequestDto.password()));
-        user.setTransactionPin(passwordEncoder.encode(registerRequestDto.transactionPin())); // ← hash PIN
+        user.setTransactionPin(passwordEncoder.encode(registerRequestDto.transactionPin()));
 
         Role role = roleRepository.findRoleByName(ApplicationConstants.ROLE_CUSTOMER)
                 .orElseThrow(() -> new IllegalArgumentException("Role not found: " +

@@ -84,7 +84,7 @@ public class StepUpService {
         stepUpToken.setUsed(true);
         stepUpTokenRepository.save(stepUpToken);
 
-        log.info("✅ Step-up token validated for user: {}",
+        log.info("Step-up token validated for user: {}",
                 stepUpToken.getUser().getEmail());
         return stepUpToken.getUser();
     }
