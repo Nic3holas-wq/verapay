@@ -8,7 +8,8 @@ import org.springframework.web.client.RestClient;
 public class TestRestClientConfig {
 
     @Bean
-    public RestClient restClient(RestClient.Builder builder) {
-        return builder.build();
+    public RestClient restClient() {
+        // Instantiates a default RestClient directly without looking for a Builder
+        return RestClient.create();
     }
 }

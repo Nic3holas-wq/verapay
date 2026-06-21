@@ -1,20 +1,23 @@
 package com.nicko.verapay.payments.service;
 
-import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.nicko.verapay.config.MpesaConfig;
 import com.nicko.verapay.dto.mpesa.B2CResponseDto;
 import com.nicko.verapay.dto.mpesa.StkPushResponseDto;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
-import org.wiremock.spring.EnableWireMock;
 
 import java.math.BigDecimal;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(
@@ -27,8 +30,9 @@ import static org.junit.jupiter.api.Assertions.*;
         },
         webEnvironment = SpringBootTest.WebEnvironment.NONE
 )
+@ActiveProfiles("test")
+@Import(TestRestClientConfig.class)
 @TestPropertySource(properties = {
-        "mpesa.base.url=http://localhost:8080",
         "mpesa.consumer.key=test-key",
         "mpesa.consumer.secret=test-secret",
         "mpesa.business.shortcode=174379",
@@ -36,17 +40,11 @@ import static org.junit.jupiter.api.Assertions.*;
         "mpesa.initiator.name=testapi",
         "mpesa.security.credential=test-credential",
         "mpesa.b2c.shortcode=600996",
-        "mpesa.callback.base.url=http://localhost:8080",
         "mpesa.allowed.ips=127.0.0.1",
         "mpesa.webhook.token=test-token"
+        // mpesa.base.url and mpesa.callback.base.url are now supplied dynamically!
 })
-@ActiveProfiles("test")
-@WireMockTest(httpPort = 8080)
-@Import(TestRestClientConfig.class)
-@TestPropertySource(properties = {
-        "mpesa.base.url=http://localhost:8080"
-})
-@EnableWireMock
+
 class MpesaIntegrationTest {
 
     @Autowired
@@ -57,6 +55,24 @@ class MpesaIntegrationTest {
 
     @Autowired
     private MpesaC2BService c2bService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        org.springframework.test.util.ReflectionTestUtils.setField(authService, "cachedToken", null);
+        org.springframework.test.util.ReflectionTestUtils.setField(authService, "tokenExpiryTime", null);
+    }
+
+    @RegisterExtension
+    static WireMockExtension wireMock = WireMockExtension.newInstance()
+            .options(wireMockConfig().dynamicPort())
+            .build();
+
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry){
+        registry.add("mpesa.base.url", wireMock::baseUrl);
+        registry.add("mpesa.callback.base.url", wireMock::baseUrl);
+        configureFor("localhost", wireMock.getPort());
+    }
 
     // ── MpesaAuthService ──────────────────────────────────────
 
