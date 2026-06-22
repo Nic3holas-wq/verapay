@@ -9,18 +9,27 @@ import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 @Getter
 @Setter
 @Entity
-@Table(name = "wallets", indexes = {@Index(name = "wallets_owner_id_key",
-        columnList = "owner_id",
-        unique = true)})
+@Table(name = "wallets", indexes = {
+        @Index(name = "wallets_owner_id_key",
+                columnList = "owner_id",
+                unique = true),
+        @Index(name = "wallets_public_id_key",
+                columnList = "public_id",
+                unique = true)})
 public class Wallet extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Long id;
+
+    @NotNull
+    @Column(name = "public_id", nullable = false, unique = true)
+    private UUID publicId = UUID.randomUUID();
 
     @NotNull
     @OneToOne(fetch = FetchType.LAZY, optional = false)

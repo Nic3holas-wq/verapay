@@ -18,6 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -38,10 +39,10 @@ public class AdminUserService {
     }
 
     // View a specific user's wallet + recent transactions
-    public UserDetailAdminDto getUserDetail(Long userId) {
-        User user = userRepository.findById(userId)
+    public UserDetailAdminDto getUserDetail(UUID publicId) {
+        User user = userRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new UserNotFoundException(
-                        "User not found with id: " + userId));
+                        "User not found with publicId: " + publicId));
 
         Wallet wallet = walletRepository.findByOwnerEmail(user.getEmail())
                 .orElseThrow(() -> new WalletNotFoundException(
@@ -54,7 +55,7 @@ public class AdminUserService {
                 .toList();
 
         return new UserDetailAdminDto(
-                user.getId(),
+                user.getPublicId(),
                 user.getFullName(),
                 user.getEmail(),
                 user.getPhoneNumber(),
@@ -70,10 +71,10 @@ public class AdminUserService {
 
     // Activate/Deactivate a user (and their wallet)
     @Transactional
-    public UserAdminDto toggleUserStatus(Long userId, boolean isActive) {
-        User user = userRepository.findById(userId)
+    public UserAdminDto toggleUserStatus(UUID publicId, boolean isActive) {
+        User user = userRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new UserNotFoundException(
-                        "User not found with id: " + userId));
+                        "User not found with publicId: " + publicId));
 
         user.setIsActive(isActive);
         userRepository.save(user);
@@ -93,7 +94,7 @@ public class AdminUserService {
 
     private UserAdminDto mapToAdminDto(User user) {
         return new UserAdminDto(
-                user.getId(),
+                user.getPublicId(),
                 user.getFullName(),
                 user.getEmail(),
                 user.getPhoneNumber(),
