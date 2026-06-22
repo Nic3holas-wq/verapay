@@ -11,6 +11,7 @@ import com.nicko.verapay.notifications.service.EmailService;
 import com.nicko.verapay.repository.LedgerEntryRepository;
 import com.nicko.verapay.repository.TransactionRepository;
 import com.nicko.verapay.repository.WalletRepository;
+import com.nicko.verapay.transaction.service.TransactionCodeGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -30,6 +31,7 @@ public class AdminTransactionReversalService {
     private final WalletRepository walletRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
     private final EmailService emailService;
+    private final TransactionCodeGenerator transactionCodeGenerator;
 
     @Transactional
     public TransactionResponseDto reverseTransaction(Long transactionId, String reason) {
@@ -96,6 +98,7 @@ public class AdminTransactionReversalService {
         reversal.setTransactionRef("TXN-" +
                 UUID.randomUUID().toString().toUpperCase()
                         .replace("-", "").substring(0, 12));
+        reversal.setTransactionCode(transactionCodeGenerator.generateCode());
         reversal.setDescription("Reversal of " + original.getTransactionRef()
                 + ": " + reason);
         reversal.setReversedTransactionId(original.getId());
@@ -145,6 +148,7 @@ public class AdminTransactionReversalService {
         return new TransactionResponseDto(
                 reversal.getId(),
                 reversal.getTransactionRef(),
+                reversal.getTransactionCode(),
                 reversal.getType(),
                 reversal.getStatus(),
                 reversal.getAmount(),

@@ -60,6 +60,7 @@ public class WalletService {
         return new TransactionHistoryDto(
                 t.getId(),
                 t.getTransactionRef(),
+                t.getTransactionCode(),
                 t.getType(),
                 t.getStatus(),
                 t.getAmount(),

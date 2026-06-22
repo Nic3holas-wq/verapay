@@ -37,6 +37,7 @@ public class TransactionService {
     private final MpesaC2BService mpesaC2BService;
     private final MpesaB2CService mpesaB2CService;
     private final EmailService emailService;
+    private final TransactionCodeGenerator transactionCodeGenerator;
 
     // DEPOSIT
     @Transactional
@@ -206,6 +207,7 @@ public class TransactionService {
         transaction.setTransactionRef("TXN-" +
                 UUID.randomUUID().toString().toUpperCase()
                         .replace("-", "").substring(0, 12));
+        transaction.setTransactionCode(transactionCodeGenerator.generateCode());
         transaction.setDescription(description);
         transaction.setCreatedAt(Instant.now());
         return transactionRepository.save(transaction);
@@ -246,6 +248,7 @@ public class TransactionService {
         return new TransactionResponseDto(
                 transaction.getId(),
                 transaction.getTransactionRef(),
+                transaction.getTransactionCode(),
                 transaction.getType(),
                 transaction.getStatus(),
                 transaction.getAmount(),

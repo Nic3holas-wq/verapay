@@ -59,6 +59,7 @@ public class AdminTransactionService {
         return new AdminTransactionDto(
                 t.getId(),
                 t.getTransactionRef(),
+                t.getTransactionCode(),
                 t.getType(),
                 t.getStatus(),
                 t.getAmount(),

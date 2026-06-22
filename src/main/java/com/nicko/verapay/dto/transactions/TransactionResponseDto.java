@@ -7,6 +7,7 @@ import java.time.Instant;
 public record TransactionResponseDto(
         Long transactionId,
         String transactionRef,
+        String transactionCode,
         String type,
         String status,
         BigDecimal amount,
