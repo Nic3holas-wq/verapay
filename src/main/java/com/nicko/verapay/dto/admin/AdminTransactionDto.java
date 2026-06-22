@@ -6,6 +6,7 @@ import java.time.Instant;
 public record AdminTransactionDto(
         Long id,
         String transactionRef,
+        String transactionCode,
         String type,
         String status,
         BigDecimal amount,

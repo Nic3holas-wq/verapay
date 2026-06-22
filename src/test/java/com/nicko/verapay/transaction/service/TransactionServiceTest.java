@@ -47,6 +47,7 @@ class TransactionServiceTest {
     @Mock private MpesaC2BService mpesaC2BService;
     @Mock private MpesaB2CService mpesaB2CService;
     @Mock private EmailService emailService;
+    @Mock private TransactionCodeGenerator transactionCodeGenerator;
     @Mock private Authentication authentication;
     @Mock private SecurityContext securityContext;
 
@@ -61,6 +62,7 @@ class TransactionServiceTest {
     @BeforeEach
     void setUp() {
         SecurityContextHolder.setContext(securityContext);
+        lenient().when(transactionCodeGenerator.generateCode()).thenReturn("VP-20260622-000001");
 
         senderUser = new User();
         senderUser.setEmail("sender@e.com");
