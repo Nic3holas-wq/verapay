@@ -11,7 +11,7 @@ import com.nicko.verapay.notifications.service.EmailService;
 import com.nicko.verapay.repository.LedgerEntryRepository;
 import com.nicko.verapay.repository.TransactionRepository;
 import com.nicko.verapay.repository.WalletRepository;
-import com.nicko.verapay.dto.transactions.TransactionCodeGenerator;
+import com.nicko.verapay.transaction.service.TransactionCodeGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
