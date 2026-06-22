@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/admin")
@@ -32,20 +33,20 @@ public class AdminController {
                 adminUserService.getAllUsers(email, isActive, page, size));
     }
 
-    // GET /api/admin/users/{id}
-    @GetMapping(value = "/users/{id}", version = "1.0")
+    // GET /api/admin/users/{publicId}
+    @GetMapping(value = "/users/{publicId}", version = "1.0")
     public ResponseEntity<UserDetailAdminDto> getUserDetail(
-            @PathVariable Long id) {
-        return ResponseEntity.ok(adminUserService.getUserDetail(id));
+            @PathVariable UUID publicId) {
+        return ResponseEntity.ok(adminUserService.getUserDetail(publicId));
     }
 
-    // PATCH /api/admin/users/{id}/status
-    @PatchMapping(value = "/users/{id}/status", version = "1.0")
+    // PATCH /api/admin/users/{publicId}/status
+    @PatchMapping(value = "/users/{publicId}/status", version = "1.0")
     public ResponseEntity<UserAdminDto> toggleUserStatus(
-            @PathVariable Long id,
+            @PathVariable UUID publicId,
             @RequestBody @Valid ToggleUserStatusDto request) {
         return ResponseEntity.ok(
-                adminUserService.toggleUserStatus(id, request.isActive()));
+                adminUserService.toggleUserStatus(publicId, request.isActive()));
     }
 
     // GET /api/admin/transactions?status=&page=0&size=20

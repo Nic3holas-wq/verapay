@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -74,7 +75,7 @@ public class AuthController {
             refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7 days
             response.addCookie(refreshCookie);
 
-            UserDto userDto = new UserDto(user.getId(), user.getFullName(),
+            UserDto userDto = new UserDto(user.getPublicId(), user.getFullName(),
                     user.getEmail(), user.getPhoneNumber(), user.getRole().getName());
 
             return ResponseEntity.ok(new LoginResponseDto("Login Successful", userDto, accessToken));

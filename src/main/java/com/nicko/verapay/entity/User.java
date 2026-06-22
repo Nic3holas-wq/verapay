@@ -8,6 +8,7 @@ import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -18,12 +19,19 @@ import java.time.Instant;
                 unique = true),
         @Index(name = "users_phone_number_key",
                 columnList = "phone_number",
+                unique = true),
+        @Index(name = "users_public_id_key",
+                columnList = "public_id",
                 unique = true)})
 public class User extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Long id;
+
+    @NotNull
+    @Column(name = "public_id", nullable = false, unique = true)
+    private UUID publicId = UUID.randomUUID();
 
     @Size(max = 100)
     @NotNull

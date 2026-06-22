@@ -5,9 +5,10 @@ import com.nicko.verapay.dto.transactions.TransactionHistoryDto;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 public record UserDetailAdminDto(
-        Long id,
+        UUID publicId,
         String fullName,
         String email,
         String phoneNumber,

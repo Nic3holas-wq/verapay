@@ -8,12 +8,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.UUID;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
     Optional<User> findByEmail(String email);
     Optional<User> readUserByEmailOrPhoneNumber(String email, String phoneNumber);
+    Optional<User> findByPublicId(UUID publicId);
 
     // Search/filter for admin
     @Query("SELECT u FROM User u WHERE " +
