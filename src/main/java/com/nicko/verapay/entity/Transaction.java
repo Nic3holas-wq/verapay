@@ -20,6 +20,9 @@ import java.time.Instant;
         @Index(name = "transactions_transaction_ref_key",
                 columnList = "transaction_ref",
                 unique = true),
+        @Index(name = "transactions_transaction_code_key",
+                columnList = "transaction_code",
+                unique = true),
         @Index(name = "idx_tx_from_wallet",
                 columnList = "from_wallet_id"),
         @Index(name = "idx_tx_to_wallet",
@@ -64,6 +67,11 @@ public class Transaction {
     @NotNull
     @Column(name = "transaction_ref", nullable = false, length = 100)
     private String transactionRef;
+
+    @Size(max = 100)
+    @NotNull
+    @Column(name = "transaction_code", nullable = false, length = 100)
+    private String transactionCode;
 
     @Size(max = 255)
     @Column(name = "description")

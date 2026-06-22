@@ -16,6 +16,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
     Optional<Transaction> findByTransactionRef(String transactionRef);
+    Optional<Transaction> findByTransactionCode(String transactionCode);
     Optional<Transaction> findByCheckoutRequestId(String checkoutRequestId);
 
     @Query("SELECT t FROM Transaction t " +
