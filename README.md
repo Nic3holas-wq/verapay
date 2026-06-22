@@ -15,6 +15,7 @@ VeraPay is a production-grade mobile money and digital wallet REST API built wit
 - **JWT Authentication & Rotation** — Secure, stateless role-based access control (RBAC) supporting `ROLE_CUSTOMER` and `ROLE_ADMIN`, with HTTP-only Cookie Refresh Token Rotation and active token reuse detection.
 - **Step-Up Authentication** — Short-lived (5-minute), one-time-use Step-Up tokens issued upon transaction PIN validation to authorize sensitive operations (Transfers & Withdrawals).
 - **M-Pesa Webhook Integration** — Direct Safaricom API integration supporting STK Push (C2B) deposits and Business-to-Customer (B2C) withdrawals, utilizing transactional callbacks and automated reversal-on-timeout safety.
+- **Structured Transaction Codes** — Implements a daily-sequential transaction code format (e.g. `VP-YYYYMMDD-000001`) alongside the unguessable external `transactionRef` UUID, backed by a lock-free native upsert sequence counter.
 - **Double-Entry Ledger System** — Strict financial compliance tracking all account modifications via immutable debit/credit entries in a ledger table linked directly to parent transactions.
 - **JPA Optimistic Concurrency Control** — Utilizes `@Version` optimistic locking on the `Wallet` entity to guarantee transaction integrity and prevent double-spending or lost updates under high concurrent loads.
 - **Distributed API Rate Limiting** — Configures Bucket4j backed by Lettuce and Redis to apply distributed rate limiting rules across auth, step-up, and registration endpoints.
@@ -39,12 +40,13 @@ VeraPay is a production-grade mobile money and digital wallet REST API built wit
 
 ## Database Design
 
-The database consists of 7 core tables with automated JPA Auditing (`BaseEntity` tracking `createdAt`, `createdBy`, `updatedAt`, and `updatedBy`):
+The database consists of 8 core tables with automated JPA Auditing (`BaseEntity` tracking `createdAt`, `createdBy`, `updatedAt`, and `updatedBy`):
 
 - **Role** — Standardized RBAC roles (`ROLE_CUSTOMER`, `ROLE_ADMIN`).
 - **User** — Customer and administrator accounts storing hashed credentials and transaction PINs.
 - **Wallet** — Individual customer balance sheet, currency tracking (default `KES`), and transaction versioning.
-- **Transaction** — Auditable financial transfers, deposits, and withdrawals displaying state (`PENDING`, `SUCCESS`, `FAILED`) and M-Pesa references.
+- **Transaction** — Auditable financial transfers, deposits, and withdrawals displaying state (`PENDING`, `SUCCESS`, `FAILED`), structured transaction codes, and M-Pesa references.
+- **DailySequence** — Stores daily transaction counters per date to guarantee uniqueness and concurrency safety.
 - **LedgerEntry** — Immutable double-entry bookkeeping journal auditing wallet adjustments (debit/credit).
 - **RefreshToken** — Tracks rotated tokens with users, expiration dates, and links to previous tokens for security reuse analysis.
 - **StepUpToken** — Temp validation tickets generated on transaction PIN match, authorizing single operations.
@@ -103,9 +105,14 @@ erDiagram
         VARCHAR status
         VARCHAR idempotency_key UK
         VARCHAR transaction_ref UK
+        VARCHAR transaction_code UK
         VARCHAR checkout_request_id
         VARCHAR description
         TIMESTAMP created_at
+    }
+    daily_sequences {
+        DATE sequence_date PK
+        BIGINT current_value
     }
     ledger_entries {
         BIGSERIAL id PK
@@ -265,6 +272,12 @@ Locating logs matching a specific client-side error in a distributed system is c
 
 ### Why Aspect-Oriented Programming (AOP) for Cross-Cutting Concerns?
 Separating logging, timing, and security checks from business services ensures a clean codebase. VeraPay implements modular AspectJ aspects to handle execution profiling (`LoggingAndPerformanceAspect`), audit successful logins (`LoginSuccessAuditAspect`), track throwables (`ExceptionAuditAspect`), and run registration check pipelines (`RegisterValidationAspect`), ensuring controllers and services only focus on their core logic.
+
+### Why Structured Transaction Codes Alongside transactionRef?
+External identifiers like `transactionRef` use random UUID fragments for unguessability and security (e.g., to prevent ID harvesting or enumerations). However, UUIDs lack structure for accounting and daily reconciliation. VeraPay introduces an additional `transactionCode` field using a structured format (`VP-YYYYMMDD-000001`). This format allows administrators and auditors to easily filter, group, and reconcile transactions sequentially by date and batch.
+
+### Why Table-Based Daily Sequence Counters for Concurrency?
+To generate unique daily-sequential numbers, standard DB sequences cannot easily be reset daily without complex cron configurations and administrative DDL queries. VeraPay uses a `daily_sequences` table containing date-based rows. By executing atomic native updates with conflict resolution (`INSERT ... ON CONFLICT DO UPDATE RETURNING`), we lock the row for the active date, ensure thread-safe incrementing under highly concurrent requests, reset the sequence automatically on the start of a new day, and rollback the increment if the parent transaction rolls back.
 
 ---
 ## Testing
