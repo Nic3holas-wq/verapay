@@ -3,9 +3,10 @@ package com.nicko.verapay.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.UUID;
 
 public record UserDto(
-        Long id,
+        UUID publicId,
 
         @NotBlank(message = "Full name is required")
         @Size(max = 100)

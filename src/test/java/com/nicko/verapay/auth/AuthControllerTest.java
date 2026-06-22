@@ -33,6 +33,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -64,6 +65,8 @@ class AuthControllerTest {
         Authentication auth = mock(Authentication.class);
         User user = new User();
         user.setId(1L);
+        UUID publicId = UUID.randomUUID();
+        user.setPublicId(publicId);
         user.setFullName("John");
         user.setEmail("user@e.com");
         user.setPhoneNumber("0700000000");
@@ -85,6 +88,7 @@ class AuthControllerTest {
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals("mock-access-token", result.getBody().jwtToken());
         assertEquals("Login Successful", result.getBody().message());
+        assertEquals(publicId, result.getBody().user().publicId());
         verify(response).addCookie(argThat(c ->
                 c.getName().equals("refreshToken")
                         && c.getValue().equals("fake-refresh-token")
