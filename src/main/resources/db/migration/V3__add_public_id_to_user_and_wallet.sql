@@ -1,6 +1,6 @@
 -- Add public_id columns as UUID with gen_random_uuid() default for new rows
-ALTER TABLE users ADD COLUMN public_id UUID DEFAULT gen_random_uuid();
-ALTER TABLE wallets ADD COLUMN public_id UUID DEFAULT gen_random_uuid();
+ALTER TABLE users ADD COLUMN IF NOT EXISTS public_id UUID DEFAULT gen_random_uuid();
+ALTER TABLE wallets ADD COLUMN IF NOT EXISTS public_id UUID DEFAULT gen_random_uuid();
 
 -- Populate public_id for any existing rows where it might be null
 UPDATE users SET public_id = gen_random_uuid() WHERE public_id IS NULL;

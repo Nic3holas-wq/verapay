@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS daily_sequences (
     current_value BIGINT NOT NULL DEFAULT 0
 );
 
-ALTER TABLE transactions ADD COLUMN transaction_code VARCHAR(100);
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_code VARCHAR(100);
 
 WITH numbered_tx AS (
     SELECT 
