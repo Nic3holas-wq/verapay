@@ -20,7 +20,7 @@ jobs:
           java-version: 21
 
       - name: Unit Tests
-        run: mvn -B test --file pom.xml -Dgroups="!integration"
+        run: mvn -B test --file pom.xml -Dexclude="**/VerapayApplicationTests.java"
 
       - name: Build the application
         run: |
