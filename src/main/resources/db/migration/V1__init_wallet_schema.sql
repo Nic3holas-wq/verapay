@@ -1,21 +1,34 @@
-CREATE TABLE IF NOT EXISTS users(
-    id BIGSERIAL PRIMARY KEY,
-    full_name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    phone_number VARCHAR(15) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    transaction_pin VARCHAR(255) NOT NULL DEFAULT 'UNSET',
-    role_id BIGINT NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    created_by VARCHAR(100),
-    updated_at TIMESTAMP,
-    updated_by VARCHAR(100)
-);
+DO $$
+    BEGIN
+        -- Create users table if it doesn't exist
+        IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
+            CREATE TABLE users(
+                                  id BIGSERIAL PRIMARY KEY,
+                                  full_name VARCHAR(100) NOT NULL,
+                                  email VARCHAR(100) NOT NULL UNIQUE,
+                                  phone_number VARCHAR(15) NOT NULL UNIQUE,
+                                  password VARCHAR(255) NOT NULL,
+                                  transaction_pin VARCHAR(255) NOT NULL DEFAULT 'UNSET',
+                                  role_id BIGINT NOT NULL,
+                                  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                                  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                                  created_by VARCHAR(100),
+                                  updated_at TIMESTAMP,
+                                  updated_by VARCHAR(100)
+            );
+        END IF;
+    END $$;
 
-ALTER TABLE users
-    ADD CONSTRAINT fk_users_role
-        FOREIGN KEY (role_id) REFERENCES roles(id);
+DO $$
+    BEGIN
+        -- Add constraint only if it doesn't already exist
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'fk_users_role'
+        ) THEN
+            ALTER TABLE users
+                ADD CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES roles(id);
+        END IF;
+    END $$;
 
 CREATE TABLE IF NOT EXISTS wallets(
     id BIGSERIAL PRIMARY KEY,
@@ -49,9 +62,6 @@ CREATE TABLE IF NOT EXISTS transactions(
     CONSTRAINT chk_different_wallets CHECK (from_wallet_id != to_wallet_id)
     );
 CREATE INDEX idx_tx_checkout_request_id ON transactions(checkout_request_id);
-
-ALTER TABLE transactions ADD COLUMN reversed_transaction_id BIGINT REFERENCES transactions(id);
-ALTER TABLE transactions ADD COLUMN reversal_reason VARCHAR(255);
 
 CREATE TABLE IF NOT EXISTS ledger_entries(
     id BIGSERIAL PRIMARY KEY,
@@ -110,26 +120,55 @@ CREATE TABLE IF NOT EXISTS step_up_tokens (
 CREATE INDEX idx_step_up_tokens_token ON step_up_tokens(token);
 CREATE INDEX idx_step_up_tokens_user_id ON step_up_tokens(user_id);
 -- Users
-CREATE UNIQUE INDEX idx_users_email       ON users(email);
-CREATE UNIQUE INDEX idx_users_phone       ON users(phone_number);
+-- Users
+DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_users_email') THEN
+            CREATE UNIQUE INDEX idx_users_email ON users(email);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_users_phone') THEN
+            CREATE UNIQUE INDEX idx_users_phone ON users(phone_number);
+        END IF;
+    END $$;
 
 -- Wallets
-CREATE UNIQUE INDEX idx_wallets_owner     ON wallets(owner_id);
+DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_wallets_owner') THEN
+            CREATE UNIQUE INDEX idx_wallets_owner ON wallets(owner_id);
+        END IF;
+    END $$;
 
 -- Transactions
-CREATE INDEX idx_tx_from_wallet           ON transactions(from_wallet_id);
-CREATE INDEX idx_tx_to_wallet             ON transactions(to_wallet_id);
-CREATE INDEX idx_tx_created               ON transactions(created_at DESC);
-CREATE UNIQUE INDEX idx_tx_idempotency    ON transactions(idempotency_key);
-CREATE UNIQUE INDEX idx_tx_ref            ON transactions(transaction_ref);
+DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_tx_from_wallet') THEN
+            CREATE INDEX idx_tx_from_wallet ON transactions(from_wallet_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_tx_to_wallet') THEN
+            CREATE INDEX idx_tx_to_wallet ON transactions(to_wallet_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_tx_created') THEN
+            CREATE INDEX idx_tx_created ON transactions(created_at DESC);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_tx_idempotency') THEN
+            CREATE UNIQUE INDEX idx_tx_idempotency ON transactions(idempotency_key);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_tx_ref') THEN
+            CREATE UNIQUE INDEX idx_tx_ref ON transactions(transaction_ref);
+        END IF;
+    END $$;
 
 -- Ledger
-CREATE INDEX idx_ledger_wallet            ON ledger_entries(wallet_id);
-CREATE INDEX idx_ledger_transaction       ON ledger_entries(transaction_id);
-CREATE INDEX idx_ledger_created           ON ledger_entries(created_at DESC);
-
-
-UPDATE users SET role_id = (SELECT id FROM roles WHERE name = 'ROLE_CUSTOMER')
-WHERE email = 'muriminicholas906@gmail.com';
-
-UPDATE users SET role_id =5 WHERE email = 'muriminicholas906@gmail.com';
+DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_ledger_wallet') THEN
+            CREATE INDEX idx_ledger_wallet ON ledger_entries(wallet_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_ledger_transaction') THEN
+            CREATE INDEX idx_ledger_transaction ON ledger_entries(transaction_id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_ledger_created') THEN
+            CREATE INDEX idx_ledger_created ON ledger_entries(created_at DESC);
+        END IF;
+    END $$;
