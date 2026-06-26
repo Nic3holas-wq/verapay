@@ -93,4 +93,19 @@ public class Transaction {
     @Column(name = "checkout_request_id", length = 100)
     private String checkoutRequestId;
 
+    @Size(max = 45)
+    @Column(name = "ip_address", length = 45)
+    private String ipAddress;
+
+    @Size(max = 255)
+    @Column(name = "device_fingerprint", length = 255)
+    private String deviceFingerprint;
+
+    @Size(max = 100)
+    @Column(name = "location_geo", length = 100)
+    private String locationGeo;
+
+    @Column(name = "is_suspicious")
+    private Boolean isSuspicious = false;
+
 }

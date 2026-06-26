@@ -44,4 +44,23 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     BigDecimal sumAmountByTypeAndSuccess(@Param("type") String type);
 
     boolean existsByReversedTransactionId(Long transactionId);
+
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+           "WHERE (t.ipAddress = :ipAddress OR t.deviceFingerprint = :deviceFingerprint) " +
+           "AND t.createdAt >= :since")
+    long countAttemptsByIpOrDevice(@Param("ipAddress") String ipAddress,
+                                   @Param("deviceFingerprint") String deviceFingerprint,
+                                   @Param("since") java.time.Instant since);
+
+    @Query("SELECT t FROM Transaction t " +
+           "WHERE (t.fromWallet.owner.id = :userId OR (t.fromWallet IS NULL AND t.toWallet.owner.id = :userId)) " +
+           "AND t.status = 'SUCCESS' " +
+           "ORDER BY t.createdAt DESC")
+    List<Transaction> findLastSuccessfulTransaction(@Param("userId") Long userId, org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t " +
+           "WHERE t.fromWallet.owner.id = :userId " +
+           "AND t.status = 'SUCCESS' " +
+           "AND t.createdAt >= :since")
+    BigDecimal sumSpendingSince(@Param("userId") Long userId, @Param("since") java.time.Instant since);
 }

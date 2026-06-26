@@ -110,6 +110,7 @@ public class AuthController {
         } catch (AuthenticationException ex) {
             return buildErrorResponse(HttpStatus.UNAUTHORIZED, "Authentication failed");
         } catch (Exception ex) {
+            log.error("An unexpected error occurred during V2 login", ex);
             return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
         }
     }
