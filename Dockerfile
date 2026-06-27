@@ -1,9 +1,10 @@
-FROM openjdk:17-jdk
+FROM eclipse-temurin:21-jdk
 
 WORKDIR /app
 
-COPY target/springdemo-1.0.0.jar /app/springdemo.jar
+COPY target/verapay-deployment.jar /app/verapay.jar
 
 EXPOSE 8080
 
-CMD ["java", "-jar", "springdemo.jar"]
+ENV JAVA_OPTS=""
+CMD ["sh", "-c", "java $JAVA_OPTS -jar /app/verapay.jar"]

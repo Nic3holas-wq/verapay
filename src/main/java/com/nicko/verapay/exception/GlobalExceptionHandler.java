@@ -137,4 +137,17 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler(FraudDetectionException.class)
+    public ResponseEntity<ErrorResponseDto> handleFraudDetection(
+            FraudDetectionException ex, WebRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponseDto(
+                        request.getDescription(false),
+                        HttpStatus.BAD_REQUEST,
+                        ex.getMessage(),
+                        LocalDateTime.now(),
+                        null
+                ));
+    }
+
 }
