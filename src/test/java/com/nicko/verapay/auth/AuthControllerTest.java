@@ -1,6 +1,8 @@
 package com.nicko.verapay.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.nicko.verapay.constants.ApplicationConstants;
 import com.nicko.verapay.dto.authentication.LoginRequestDto;
 import com.nicko.verapay.dto.authentication.LoginResponseDto;
@@ -26,6 +28,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -91,6 +94,9 @@ class AuthControllerTest {
         mockRefreshToken.setToken("fake-refresh-token");
 
         HttpServletRequest mockServletRequest = mock(HttpServletRequest.class);
+        // Stub ALL headers read by resolveClientIp to avoid strict-mock UnnecessaryStubbingException
+        when(mockServletRequest.getHeader("X-Forwarded-For")).thenReturn(null);
+        when(mockServletRequest.getHeader("X-Real-IP")).thenReturn(null);
         when(mockServletRequest.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(mockServletRequest.getRemoteAddr()).thenReturn("127.0.0.1");
         when(mockServletRequest.getHeader("X-Device-Fingerprint")).thenReturn("fingerprint-xyz");
@@ -107,6 +113,7 @@ class AuthControllerTest {
         // STUB: Return the passed entity when save is called
         when(userDeviceRepository.save(any(UserDevice.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
+        // IP 127.0.0.1 bypasses the restTemplate geo-lookup entirely (early return in resolveLocationFromIp)
         ResponseEntity<LoginResponseDto> result = authController.apiLoginV2(dto, mockServletRequest, response);
 
         System.out.println("Response Body: " + result.getBody());
@@ -129,18 +136,28 @@ class AuthControllerTest {
 
     @Test
     @DisplayName("apiLoginV2: updates existing device last login timestamp on subsequent login")
-    void apiLoginV2_ExistingDevice_Success() {
+    void apiLoginV2_ExistingDevice_Success() throws Exception {
         LoginRequestDto dto = new LoginRequestDto("user@e.com", "pass");
         Authentication auth = mock(Authentication.class);
 
+        // Provide all fields needed by UserDto constructor to avoid NPE
         User user = new User();
         user.setId(1L);
-        user.setRole(new Role());
+        user.setPublicId(UUID.randomUUID());
+        user.setFullName("Jane");
+        user.setEmail("user@e.com");
+        user.setPhoneNumber("0700000001");
+        Role role = new Role();
+        role.setName(ApplicationConstants.ROLE_CUSTOMER);
+        user.setRole(role);
 
         RefreshToken mockRefreshToken = new RefreshToken();
         mockRefreshToken.setToken("fake-refresh-token");
 
         HttpServletRequest mockServletRequest = mock(HttpServletRequest.class);
+        // Stub ALL headers read by resolveClientIp
+        when(mockServletRequest.getHeader("X-Forwarded-For")).thenReturn(null);
+        when(mockServletRequest.getHeader("X-Real-IP")).thenReturn(null);
         when(mockServletRequest.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
         when(mockServletRequest.getRemoteAddr()).thenReturn("192.168.1.5");
         when(mockServletRequest.getHeader("X-Device-Fingerprint")).thenReturn("fingerprint-xyz");
@@ -149,6 +166,19 @@ class AuthControllerTest {
         when(auth.getPrincipal()).thenReturn(user);
         when(jwtUtil.generateAccessToken(auth)).thenReturn("mock-access-token");
         when(jwtUtil.generateRefreshToken(user, null)).thenReturn(mockRefreshToken);
+
+        // IP 192.168.1.5 is a non-localhost IP → resolveLocationFromIp calls restTemplate.
+        // Stub the HTTP exchange to return a valid geo JSON response so the controller doesn't NPE.
+        String geoJson = "{\"city\":\"Nairobi\",\"country_name\":\"Kenya\"}";
+        ResponseEntity<String> geoResponse = ResponseEntity.ok(geoJson);
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), any(), eq(String.class)))
+                .thenReturn(geoResponse);
+
+        // Stub objectMapper to parse the geo JSON into a real JsonNode
+        ObjectNode geoNode = JsonNodeFactory.instance.objectNode();
+        geoNode.put("city", "Nairobi");
+        geoNode.put("country_name", "Kenya");
+        when(objectMapper.readTree(geoJson)).thenReturn(geoNode);
 
         UserDevice existingDevice = new UserDevice();
         when(userDeviceRepository.findByUserIdAndDeviceFingerprint(1L, "fingerprint-xyz"))
