@@ -8,6 +8,7 @@ import com.nicko.verapay.entity.*;
 import com.nicko.verapay.exception.InsufficientFundsException;
 import com.nicko.verapay.exception.WalletNotFoundException;
 import com.nicko.verapay.notifications.service.EmailService;
+import com.nicko.verapay.transaction.service.FraudPreventionService.FraudCheckResult;
 import com.nicko.verapay.payments.service.MpesaB2CService;
 import com.nicko.verapay.payments.service.MpesaC2BService;
 import com.nicko.verapay.repository.LedgerEntryRepository;
@@ -24,6 +25,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
+import java.util.Collections;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
@@ -45,6 +47,7 @@ class TransactionServiceTest {
     @Mock private MpesaB2CService mpesaB2CService;
     @Mock private EmailService emailService;
     @Mock private TransactionCodeGenerator transactionCodeGenerator;
+    @Mock private FraudPreventionService fraudPreventionService;
     @Mock private Authentication authentication;
     @Mock private SecurityContext securityContext;
 
@@ -60,6 +63,12 @@ class TransactionServiceTest {
     void setUp() {
         SecurityContextHolder.setContext(securityContext);
         lenient().when(transactionCodeGenerator.generateCode()).thenReturn("VP-20260622-000001");
+
+        // Default: fraud checks pass (ALLOW)
+        FraudCheckResult allowResult = new FraudCheckResult(
+                false, false, Collections.emptyList(),
+                "127.0.0.1", "test-fingerprint", "Local Development, LAN", "ALLOW");
+        lenient().when(fraudPreventionService.evaluate(any(), any(), any())).thenReturn(allowResult);
 
         senderUser = new User();
         senderUser.setEmail("sender@e.com");
