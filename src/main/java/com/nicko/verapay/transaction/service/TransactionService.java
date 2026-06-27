@@ -8,6 +8,7 @@ import com.nicko.verapay.dto.transactions.*;
 import com.nicko.verapay.entity.*;
 import com.nicko.verapay.exception.InsufficientFundsException;
 import com.nicko.verapay.exception.WalletNotFoundException;
+import com.nicko.verapay.exception.FraudDetectionException;
 import com.nicko.verapay.notifications.service.EmailService;
 import com.nicko.verapay.payments.service.MpesaB2CService;
 import com.nicko.verapay.payments.service.MpesaC2BService;
@@ -35,12 +36,20 @@ public class TransactionService {
     private final MpesaB2CService mpesaB2CService;
     private final EmailService emailService;
     private final TransactionCodeGenerator transactionCodeGenerator;
+    private final FraudPreventionService fraudPreventionService;
 
     // DEPOSIT
     @Transactional
     public TransactionResponseDto deposit(DepositRequestDto request) {
         String email = getLoggedInEmail();
         Wallet wallet = getWalletByEmail(email);
+        User user = wallet.getOwner();
+
+        FraudPreventionService.FraudCheckResult fraudResult = fraudPreventionService.evaluate(user, request.amount(), "DEPOSIT");
+        if (fraudResult.block) {
+            fraudPreventionService.logBlockedTransaction(user, request.amount(), "DEPOSIT", fraudResult);
+            throw new FraudDetectionException("Transaction rejected due to fraud checks: " + fraudResult.rulesTriggered);
+        }
 
         if (transactionRepository.findByIdempotencyKey(request.idempotencyKey()).isPresent()) {
             throw new IllegalArgumentException("Duplicate transaction request");
@@ -54,8 +63,11 @@ public class TransactionService {
                 null, wallet, request.amount(),
                 ApplicationConstants.TRANSACTION_TYPE_DEPOSIT,
                 ApplicationConstants.TRANSACTION_STATUS_PENDING,
-                request.idempotencyKey(), request.description()
+                request.idempotencyKey(), request.description(),
+                fraudResult
         );
+
+        fraudPreventionService.logRiskLog(transaction, fraudResult);
 
         // Store the checkoutRequestId so the Webhook can find this transaction later
         transaction.setCheckoutRequestId(stkResponse.checkoutRequestID());
@@ -73,6 +85,13 @@ public class TransactionService {
         stepUpService.validateStepUpToken(request.stepUpToken());
         String email = getLoggedInEmail();
         Wallet wallet = getWalletByEmail(email);
+        User user = wallet.getOwner();
+
+        FraudPreventionService.FraudCheckResult fraudResult = fraudPreventionService.evaluate(user, request.amount(), "WITHDRAW");
+        if (fraudResult.block) {
+            fraudPreventionService.logBlockedTransaction(user, request.amount(), "WITHDRAW", fraudResult);
+            throw new FraudDetectionException("Transaction rejected due to fraud checks: " + fraudResult.rulesTriggered);
+        }
 
         if (wallet.getBalance().compareTo(request.amount()) < 0) {
             throw new InsufficientFundsException("Insufficient funds");
@@ -83,8 +102,11 @@ public class TransactionService {
                 wallet, null, request.amount(),
                 ApplicationConstants.TRANSACTION_TYPE_WITHDRAW,
                 ApplicationConstants.TRANSACTION_STATUS_PENDING,
-                request.idempotencyKey(), request.description()
+                request.idempotencyKey(), request.description(),
+                fraudResult
         );
+
+        fraudPreventionService.logRiskLog(transaction, fraudResult);
 
         // 2. Initiate API
         mpesaB2CService.initiateB2C(
@@ -104,6 +126,13 @@ public class TransactionService {
         // 2. Get sender wallet
         String senderEmail = getLoggedInEmail();
         Wallet senderWallet = getWalletByEmail(senderEmail);
+        User user = senderWallet.getOwner();
+
+        FraudPreventionService.FraudCheckResult fraudResult = fraudPreventionService.evaluate(user, request.amount(), "TRANSFER");
+        if (fraudResult.block) {
+            fraudPreventionService.logBlockedTransaction(user, request.amount(), "TRANSFER", fraudResult);
+            throw new FraudDetectionException("Transaction rejected due to fraud checks: " + fraudResult.rulesTriggered);
+        }
 
         // 3. Get recipient wallet
         Wallet recipientWallet = walletRepository
@@ -150,8 +179,11 @@ public class TransactionService {
                 ApplicationConstants.TRANSACTION_TYPE_TRANSFER,
                 ApplicationConstants.TRANSACTION_STATUS_SUCCESS,
                 request.idempotencyKey(),
-                request.description()
+                request.description(),
+                fraudResult
         );
+
+        fraudPreventionService.logRiskLog(transaction, fraudResult);
 
         // 10. Create ledger entries for both wallets
         createLedgerEntry(senderWallet, transaction, request.amount(),
@@ -191,7 +223,7 @@ public class TransactionService {
             Wallet fromWallet, Wallet toWallet,
             BigDecimal amount, String type,
             String status, String idempotencyKey,
-            String description) {
+            String description, FraudPreventionService.FraudCheckResult fraudResult) {
 
         Transaction transaction = new Transaction();
         transaction.setFromWallet(fromWallet);
@@ -206,6 +238,16 @@ public class TransactionService {
                         .replace("-", "").substring(0, 12));
         transaction.setTransactionCode(transactionCodeGenerator.generateCode());
         transaction.setDescription(description);
+
+        if (fraudResult != null) {
+            transaction.setIpAddress(fraudResult.clientIp);
+            transaction.setDeviceFingerprint(fraudResult.deviceFingerprint);
+            transaction.setLocationGeo(fraudResult.locationGeo);
+            transaction.setIsSuspicious(fraudResult.suspicious);
+        } else {
+            transaction.setIsSuspicious(false);
+        }
+
         transaction.setCreatedAt(Instant.now());
         return transactionRepository.save(transaction);
     }

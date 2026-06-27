@@ -1,5 +1,6 @@
 package com.nicko.verapay.auth;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nicko.verapay.constants.ApplicationConstants;
 import com.nicko.verapay.dto.authentication.LoginRequestDto;
 import com.nicko.verapay.dto.authentication.LoginResponseDto;
@@ -8,12 +9,16 @@ import com.nicko.verapay.dto.transactions.StepUpRequestDto;
 import com.nicko.verapay.entity.RefreshToken;
 import com.nicko.verapay.entity.Role;
 import com.nicko.verapay.entity.User;
+import com.nicko.verapay.entity.fraud.UserDevice;
 import com.nicko.verapay.repository.RefreshTokenRepository;
 import com.nicko.verapay.repository.RoleRepository;
 import com.nicko.verapay.repository.UserRepository;
 import com.nicko.verapay.repository.WalletRepository;
+import com.nicko.verapay.repository.fraud.UserDeviceRepository;
 import com.nicko.verapay.security.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +34,7 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -38,6 +44,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,8 +60,128 @@ class AuthControllerTest {
     @Mock private RefreshTokenRepository refreshTokenRepository;
     @Mock private StepUpService stepUpService;
     @Mock private HttpServletResponse response;
+    @Mock private UserDeviceRepository userDeviceRepository;
+    @Mock private RestTemplate restTemplate;
+    @Mock private ObjectMapper objectMapper;
 
-    @InjectMocks private AuthController authController;
+    @InjectMocks
+    private AuthController authController;
+
+
+    // ── apiLoginV2() ────────────────────────────────────────────
+
+    @Test
+    @DisplayName("apiLoginV2: registers new device, returns 200 with access token, and sets refresh cookie")
+    void apiLoginV2_NewDevice_Success() {
+        LoginRequestDto dto = new LoginRequestDto("user@e.com", "pass");
+        Authentication auth = mock(Authentication.class);
+
+        User user = new User();
+        user.setId(1L);
+        UUID publicId = UUID.randomUUID();
+        user.setPublicId(publicId);
+        user.setFullName("John");
+        user.setEmail("user@e.com");
+        user.setPhoneNumber("0700000000");
+        Role role = new Role();
+        role.setName(ApplicationConstants.ROLE_CUSTOMER);
+        user.setRole(role);
+
+        RefreshToken mockRefreshToken = new RefreshToken();
+        mockRefreshToken.setToken("fake-refresh-token");
+
+        HttpServletRequest mockServletRequest = mock(HttpServletRequest.class);
+        when(mockServletRequest.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
+        when(mockServletRequest.getRemoteAddr()).thenReturn("127.0.0.1");
+        when(mockServletRequest.getHeader("X-Device-Fingerprint")).thenReturn("fingerprint-xyz");
+
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenReturn(auth);
+        when(auth.getPrincipal()).thenReturn(user);
+        when(jwtUtil.generateAccessToken(auth)).thenReturn("mock-access-token");
+        when(jwtUtil.generateRefreshToken(user, null)).thenReturn(mockRefreshToken);
+
+        when(userDeviceRepository.findByUserIdAndDeviceFingerprint(1L, "fingerprint-xyz"))
+                .thenReturn(Optional.empty());
+
+        // STUB: Return the passed entity when save is called
+        when(userDeviceRepository.save(any(UserDevice.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ResponseEntity<LoginResponseDto> result = authController.apiLoginV2(dto, mockServletRequest, response);
+
+        System.out.println("Response Body: " + result.getBody());
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertEquals("V2 Login Successful", result.getBody().message());
+        assertEquals("mock-access-token", result.getBody().jwtToken());
+
+        verify(userDeviceRepository).save(argThat(device ->
+                device.getUserId().equals(1L)
+                        && device.getDeviceFingerprint().equals("fingerprint-xyz")
+                        && device.getIpAddress().equals("127.0.0.1")
+                        && device.getUserAgent().equals("Mozilla/5.0")
+        ));
+
+        verify(response).addCookie(argThat(c ->
+                c.getName().equals("refreshToken")
+                        && c.getValue().equals("fake-refresh-token")
+        ));
+    }
+
+    @Test
+    @DisplayName("apiLoginV2: updates existing device last login timestamp on subsequent login")
+    void apiLoginV2_ExistingDevice_Success() {
+        LoginRequestDto dto = new LoginRequestDto("user@e.com", "pass");
+        Authentication auth = mock(Authentication.class);
+
+        User user = new User();
+        user.setId(1L);
+        user.setRole(new Role());
+
+        RefreshToken mockRefreshToken = new RefreshToken();
+        mockRefreshToken.setToken("fake-refresh-token");
+
+        HttpServletRequest mockServletRequest = mock(HttpServletRequest.class);
+        when(mockServletRequest.getHeader("User-Agent")).thenReturn("Mozilla/5.0");
+        when(mockServletRequest.getRemoteAddr()).thenReturn("192.168.1.5");
+        when(mockServletRequest.getHeader("X-Device-Fingerprint")).thenReturn("fingerprint-xyz");
+
+        when(authenticationManager.authenticate(any())).thenReturn(auth);
+        when(auth.getPrincipal()).thenReturn(user);
+        when(jwtUtil.generateAccessToken(auth)).thenReturn("mock-access-token");
+        when(jwtUtil.generateRefreshToken(user, null)).thenReturn(mockRefreshToken);
+
+        UserDevice existingDevice = new UserDevice();
+        when(userDeviceRepository.findByUserIdAndDeviceFingerprint(1L, "fingerprint-xyz"))
+                .thenReturn(Optional.of(existingDevice));
+
+        // STUB: Return the passed existing device when save is called
+        when(userDeviceRepository.save(any(UserDevice.class))).thenReturn(existingDevice);
+
+        ResponseEntity<LoginResponseDto> result = authController.apiLoginV2(dto, mockServletRequest, response);
+
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        verify(userDeviceRepository).save(existingDevice);
+    }
+
+
+    @Test
+    @DisplayName("apiLoginV2: returns 401 when authentication manager throws BadCredentialsException")
+    void apiLoginV2_BadCredentials_Returns401() {
+        LoginRequestDto dto = new LoginRequestDto("user@e.com", "wrongpass");
+
+        HttpServletRequest mockServletRequest = mock(HttpServletRequest.class);
+
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new BadCredentialsException("Bad credentials"));
+
+        ResponseEntity<LoginResponseDto> result = authController.apiLoginV2(dto, mockServletRequest, response);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, result.getStatusCode());
+        assertEquals("Invalid username or password", result.getBody().message());
+
+        verify(restTemplate, never()).exchange(anyString(), any(), any(), eq(String.class));
+        verify(response, never()).addCookie(any());
+    }
 
     // ── apiLogin() ────────────────────────────────────────────
 
